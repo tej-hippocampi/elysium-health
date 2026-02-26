@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Process Discharge Notes | CareGuide</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #2563EB;
+      --primary-dark: #1D4ED8;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: #EFF4FB;
+      min-height: 100vh;
+      color: #1F2937;
+    }
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #E5E7EB;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1);
+    }
+    .header-inner {
+      max-width: 720px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: var(--primary); border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 20px; font-weight: 700;
+    }
+    .logo-text { font-size: 20px; font-weight: 700; color: var(--primary); }
+    .container {
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,.1);
+      padding: 36px;
+    }
+    .card h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #111827;
+    }
+    .card p.subtitle {
+      font-size: 14px;
+      color: #6B7280;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+    .form-group { margin-bottom: 20px; }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #D1D5DB;
+      border-radius: 10px;
+      font-family: var(--font);
+      font-size: 14px;
+      color: #1F2937;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+    textarea {
+      min-height: 280px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+    .submit-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      background: linear-gradient(135deg, #1A3C8F, #2563EB);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--font);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 2px 8px rgba(37,99,235,.3);
+      width: 100%;
+      justify-content: center;
+    }
+    .submit-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37,99,235,.4);
+    }
+    .submit-btn:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .processing {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .processing.active { display: block; }
+    .processing .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #E5E7EB;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .processing p { font-size: 15px; color: #6B7280; margin-bottom: 6px; }
+    .processing .step { font-size: 13px; color: #9CA3AF; }
+    .error-msg {
+      display: none;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: #991B1B;
+      font-size: 14px;
+      margin-top: 16px;
+    }
+    .error-msg.active { display: block; }
+    .hint {
+      background: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+    }
+    .hint h3 { font-size: 13px; font-weight: 600; color: #1D4ED8; margin-bottom: 6px; }
+    .hint p { font-size: 13px; color: #1E40AF; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-inner">
+      <div class="logo-icon">+</div>
+      <span class="logo-text">CareGuide</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h1>Process Discharge Notes</h1>
+      <p class="subtitle">
+        Paste a patient's post-discharge notes below. CareGuide will automatically generate
+        two personalized resource sets: <strong>Diagnosis Explanation</strong> and
+        <strong>Treatment & Red Flags</strong> — each with a voice video and quick reference card.
+      </p>
+
+      <div class="hint">
+        <h3>💡 What gets generated</h3>
+        <p>
+          1. <strong>Diagnosis</strong> — voice video explaining the diagnosis + battlecard<br>
+          2. <strong>Treatment & Red Flags</strong> — voice video on meds, recovery, warning signs + battlecard<br>
+          3. <strong>AI Care Guide</strong> — chat avatar with full context of the discharge materials
+        </p>
+      </div>
+
+      <form id="uploadForm">
+        <div class="form-group">
+          <label for="patientName">Patient Name</label>
+          <input type="text" id="patientName" placeholder="e.g. Maria L." required />
+        </div>
+
+        <div class="form-group">
+          <label for="dischargeNotes">Discharge Notes</label>
+          <textarea id="dischargeNotes" placeholder="Paste the full post-discharge notes, after-visit summary, medication list, clinical notes, etc." required></textarea>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">
+          ⚡ Generate Resources
+        </button>
+      </form>
+
+      <div class="processing" id="processing">
+        <div class="spinner"></div>
+        <p>Generating personalized resources…</p>
+        <div class="step" id="processingStep">Extracting clinical data from notes</div>
+      </div>
+
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
+    const form = document.getElementById('uploadForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const processing = document.getElementById('processing');
+    const errorMsg = document.getElementById('errorMsg');
+    const stepEl = document.getElementById('processingStep');
+
+    const steps = [
+      'Extracting clinical data from notes',
+      'Generating diagnosis voice script',
+      'Generating treatment voice script',
+      'Creating battlecard HTML',
+      'Synthesizing audio via ElevenLabs',
+      'Building patient dashboard',
+    ];
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('patientName').value.trim();
+      const notes = document.getElementById('dischargeNotes').value.trim();
+      if (!name || !notes) return;
+
+      form.style.display = 'none';
+      processing.classList.add('active');
+      errorMsg.classList.remove('active');
+
+      let stepIdx = 0;
+      const stepInterval = setInterval(() => {
+        stepIdx = (stepIdx + 1) % steps.length;
+        stepEl.textContent = steps[stepIdx];
+      }, 4000);
+
+      try {
+        const res = await fetch(`${API_BASE}/api/process-discharge`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patient_name: name,
+            discharge_notes: notes,
+          }),
+        });
+
+        clearInterval(stepInterval);
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Processing failed');
+        }
+
+        const data = await res.json();
+        window.location.href = `/patient/${data.patient_id}`;
+      } catch (err) {
+        clearInterval(stepInterval);
+        processing.classList.remove('active');
+        form.style.display = 'block';
+        errorMsg.textContent = `Error: ${err.message}`;
+        errorMsg.classList.add('active');
+      }
+    });
+  </script>
+
+</body>
+</html>
