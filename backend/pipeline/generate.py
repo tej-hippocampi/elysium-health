@@ -49,7 +49,7 @@ class GenerationLayer:
         battlecard_html = self._call_claude(
             system=battlecard_sys,
             user=f"[Voice Script]\n\n{voice_script}\n\nGenerate the battlecard HTML.",
-            max_tokens=4000,
+            max_tokens=8000,
         )
 
         return voice_script, battlecard_html
@@ -79,20 +79,20 @@ class GenerationLayer:
         diagnosis_battlecard = self._call_claude(
             system=DIAGNOSIS_BATTLECARD_PROMPT,
             user=f"[Voice Script]\n\n{diagnosis_voice}\n\nGenerate the battlecard HTML.",
-            max_tokens=4000,
+            max_tokens=8000,
         )
 
         # --- Treatment & Red Flags resource ---
         treatment_voice = self._call_claude(
             system=TREATMENT_VOICE_PROMPT,
             user=f"[Clinical Input Layer]\n\n{clinical_input}\n\nGenerate the voice script.",
-            max_tokens=2000,
+            max_tokens=2500,
         )
 
         treatment_battlecard = self._call_claude(
             system=TREATMENT_BATTLECARD_PROMPT,
             user=f"[Voice Script]\n\n{treatment_voice}\n\nGenerate the battlecard HTML.",
-            max_tokens=4000,
+            max_tokens=8000,
         )
 
         return {
