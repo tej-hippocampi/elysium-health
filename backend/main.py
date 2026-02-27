@@ -407,6 +407,29 @@ async def patient_dashboard(patient_id: str):
         raise HTTPException(status_code=404, detail="Patient not found")
 
     d = _patient_store[patient_id]
+
+    def clean_html(html):
+        h = (html or "").strip()
+        if h.startswith("```"):
+            h = h.split("\n", 1)[1] if "\n" in h else h[3:]
+            if h.endswith("```"):
+                h = h[:-3].strip()
+        return h
+
+    resources = d.get("resources")
+    resources_json = None
+    if resources:
+        resources_json = {
+            "diagnosis": {
+                "voice_audio_url": resources["diagnosis"].get("voice_audio_url"),
+                "battlecard_html": clean_html(resources["diagnosis"].get("battlecard_html", "")),
+            },
+            "treatment": {
+                "voice_audio_url": resources["treatment"].get("voice_audio_url"),
+                "battlecard_html": clean_html(resources["treatment"].get("battlecard_html", "")),
+            },
+        }
+
     patient_json = {
         "id":           patient_id,
         "name":         d["name"],
@@ -417,7 +440,8 @@ async def patient_dashboard(patient_id: str):
         "audioUrl":     d.get("voice_audio_url") or None,
         "tavusUrl":     d.get("avatar_url") or None,
         "phoneTeam":    os.getenv("CARE_TEAM_PHONE", ""),
-        "hasResources": d.get("resources") is not None,
+        "hasResources": resources_json is not None,
+        "resources":    resources_json,
     }
 
     patient_json_str = json.dumps(patient_json)
