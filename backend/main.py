@@ -327,6 +327,20 @@ async def get_patient_resources(patient_id: str):
     resources = _patient_store[patient_id].get("resources")
     if not resources:
         raise HTTPException(status_code=404, detail="No split resources generated for this patient")
+
+    def clean_html(html):
+        """Strip markdown code fences if Claude wrapped the HTML."""
+        h = (html or "").strip()
+        if h.startswith("```"):
+            h = h.split("\n", 1)[1] if "\n" in h else h[3:]
+            if h.endswith("```"):
+                h = h[:-3].strip()
+        return h
+
+    for key in ("diagnosis", "treatment"):
+        if key in resources and "battlecard_html" in resources[key]:
+            resources[key]["battlecard_html"] = clean_html(resources[key]["battlecard_html"])
+
     return resources
 
 
@@ -400,8 +414,8 @@ async def patient_dashboard(patient_id: str):
         "pipelineType": d["pipeline_type"],
         "procedure":    d["structured_data"].get("procedure_name", ""),
         "visitDate":    d["structured_data"].get("procedure_date", ""),
-        "audioUrl":     d.get("voice_audio_url") or "null",
-        "tavusUrl":     d.get("avatar_url") or "null",
+        "audioUrl":     d.get("voice_audio_url") or None,
+        "tavusUrl":     d.get("avatar_url") or None,
         "phoneTeam":    os.getenv("CARE_TEAM_PHONE", ""),
         "hasResources": d.get("resources") is not None,
     }
