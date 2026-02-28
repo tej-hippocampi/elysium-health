@@ -475,6 +475,10 @@ async def patient_dashboard(patient_id: str):
 
     inject = f"<script>window.__PATIENT__ = {patient_json_str};</script>"
     html = html.replace("</head>", f"{inject}\n</head>")
+
+    voice_url = f"/patient/{patient_id}/voice"
+    html = html.replace('id="voiceAvatarBtn" href="#"', f'id="voiceAvatarBtn" href="{voice_url}"')
+
     return HTMLResponse(content=html)
 
 
