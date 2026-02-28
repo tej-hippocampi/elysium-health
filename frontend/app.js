@@ -59,6 +59,8 @@ function initTabs() {
 
 function initQuestionsButton() {
   document.getElementById('questionsBtn')?.addEventListener('click', showCareGuide);
+  const voiceBtn = document.getElementById('voiceAvatarBtn');
+  if (voiceBtn) voiceBtn.href = `/patient/${PATIENT.id}/voice`;
 }
 
 function showCareGuide() {

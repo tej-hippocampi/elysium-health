@@ -200,6 +200,39 @@ body {
 
 .section-divider { height: 1px; background: var(--gray-100); margin: 0 32px; }
 
+/* ─── Panel Actions (buttons row) ────────────────────────── */
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.voice-avatar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #4A9EBF, #2D7D9A);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 2px 8px rgba(74, 158, 191, .25);
+  flex-shrink: 0;
+}
+
+.voice-avatar-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 158, 191, .35);
+  color: #fff;
+}
+
 /* ─── Resource Tabs ──────────────────────────────────────── */
 .resource-tabs {
   display: flex;

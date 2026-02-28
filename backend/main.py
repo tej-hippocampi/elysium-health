@@ -401,6 +401,29 @@ async def get_discharge_instructions(patient_id: str):
     }
 
 
+@app.get("/patient/{patient_id}/voice", response_class=HTMLResponse)
+async def voice_avatar_page(patient_id: str):
+    """Serves the voice avatar conversation interface."""
+    if patient_id not in _patient_store:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    d = _patient_store[patient_id]
+    patient_json = json.dumps({
+        "id":        patient_id,
+        "name":      d["name"],
+        "firstName": d["name"].split()[0],
+        "procedure": d["structured_data"].get("procedure_name", ""),
+    })
+
+    html_path = os.path.join(os.path.dirname(__file__), "../frontend/voice-avatar.html")
+    with open(html_path) as f:
+        html = f.read()
+
+    inject = f"<script>window.__PATIENT__ = {patient_json};</script>"
+    html = html.replace("</head>", f"{inject}\n</head>")
+    return HTMLResponse(content=html)
+
+
 @app.get("/patient/{patient_id}", response_class=HTMLResponse)
 async def patient_dashboard(patient_id: str):
     if patient_id not in _patient_store:
