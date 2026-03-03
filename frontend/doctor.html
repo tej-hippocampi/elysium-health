@@ -121,6 +121,47 @@
     .error-msg { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 10px; padding: 12px 16px; color: #991B1B; font-size: 13px; margin-top: 14px; display: none; }
     .error-msg.active { display: block; }
 
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .upload-area {
+      border: 2px dashed var(--gray-300); border-radius: 10px; padding: 24px;
+      text-align: center; transition: border-color .2s, background .2s; cursor: pointer;
+    }
+    .upload-area:hover, .upload-area.dragover { border-color: var(--primary); background: var(--primary-light); }
+    .upload-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+    .upload-text { font-size: 14px; color: var(--gray-600); margin-bottom: 4px; }
+    .upload-link { color: var(--primary); font-weight: 600; cursor: pointer; text-decoration: underline; }
+    .upload-hint { font-size: 12px; color: var(--gray-400); }
+    .upload-success { display: flex; align-items: center; gap: 10px; justify-content: center; }
+    .upload-check { color: var(--success); font-size: 20px; font-weight: 700; }
+    .upload-filename { font-size: 14px; font-weight: 600; color: var(--gray-700); }
+    .upload-remove { background: none; border: none; font-size: 18px; color: var(--gray-400); cursor: pointer; padding: 4px; }
+    .upload-remove:hover { color: var(--danger); }
+
+    .or-divider { display: flex; align-items: center; gap: 12px; margin: 14px 0; }
+    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
+    .or-divider span { font-size: 12px; color: var(--gray-400); font-weight: 500; white-space: nowrap; }
+
+    .send-btn-cell {
+      padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      font-family: var(--font); cursor: pointer; text-decoration: none; transition: all .15s;
+      border: none; background: #10B981; color: #fff;
+    }
+    .send-btn-cell:hover { background: #059669; }
+    .send-btn-cell:disabled { opacity: .5; cursor: not-allowed; }
+    .send-btn-cell.sent { background: var(--gray-200); color: var(--gray-500); }
+
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; background: var(--gray-900); color: #fff;
+      padding: 14px 20px; border-radius: 10px; font-size: 14px; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2); z-index: 300; animation: toast-in .3s ease-out;
+      display: none;
+    }
+    .toast.active { display: block; }
+    .toast.success { background: #065F46; }
+    .toast.error { background: #991B1B; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
     @media (max-width: 768px) {
       .stats-row { grid-template-columns: 1fr; }
       .roster-table th:nth-child(3), .roster-table td:nth-child(3) { display: none; }
@@ -195,11 +236,35 @@
       </div>
       <div class="modal-body" id="modalForm">
         <div class="form-group">
-          <label for="patientName">Patient Name</label>
+          <label for="patientName">Patient Name *</label>
           <input type="text" id="patientName" placeholder="e.g. Maria L." required />
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="patientPhone">Phone Number</label>
+            <input type="tel" id="patientPhone" placeholder="+1 (555) 123-4567" />
+          </div>
+          <div class="form-group">
+            <label for="patientEmail">Email</label>
+            <input type="email" id="patientEmail" placeholder="patient@email.com" />
+          </div>
+        </div>
         <div class="form-group">
-          <label for="dischargeNotes">Discharge Notes</label>
+          <label>Discharge Notes *</label>
+          <div class="upload-area" id="uploadArea">
+            <div class="upload-content" id="uploadContent">
+              <span class="upload-icon">📄</span>
+              <p class="upload-text">Drag & drop a PDF or <label for="pdfInput" class="upload-link">browse files</label></p>
+              <span class="upload-hint">PDF files up to 10MB</span>
+            </div>
+            <div class="upload-success" id="uploadSuccess" style="display:none;">
+              <span class="upload-check">✓</span>
+              <span class="upload-filename" id="uploadFilename"></span>
+              <button class="upload-remove" id="uploadRemove" type="button">×</button>
+            </div>
+            <input type="file" id="pdfInput" accept=".pdf" style="display:none;" />
+          </div>
+          <div class="or-divider"><span>or paste text below</span></div>
           <textarea id="dischargeNotes" placeholder="Paste the full post-discharge notes, after-visit summary, medication list, clinical notes..."></textarea>
         </div>
       </div>
@@ -248,7 +313,9 @@
       emptyState.style.display = 'none';
       document.querySelector('.roster-table').style.display = 'table';
 
-      rosterBody.innerHTML = patients.map(p => `
+      rosterBody.innerHTML = patients.map(p => {
+        const hasContact = p.phone || p.email;
+        return `
         <tr>
           <td class="patient-name-cell">${esc(p.name)}</td>
           <td class="procedure-cell">${esc(p.procedure || '—')}</td>
@@ -261,11 +328,13 @@
           <td>
             <div class="action-btns">
               <a href="/doctor/patient/${p.id}" class="view-btn primary">View Dashboard</a>
-              <a href="/patient/${p.id}" class="view-btn" target="_blank">Patient Link</a>
+              <button class="send-btn-cell" onclick="sendToPatient('${p.id}')" ${!hasContact ? 'disabled title="No contact info"' : ''}>
+                📩 Send to Patient
+              </button>
             </div>
           </td>
-        </tr>
-      `).join('');
+        </tr>`;
+      }).join('');
     }
 
     // ── Modal ────────────────────────────────
@@ -298,10 +367,67 @@
       'Building patient dashboard',
     ];
 
+    // ── PDF Upload ─────────────────────────
+    const uploadArea = document.getElementById('uploadArea');
+    const pdfInput   = document.getElementById('pdfInput');
+    const uploadContent = document.getElementById('uploadContent');
+    const uploadSuccess = document.getElementById('uploadSuccess');
+    let pdfText = '';
+
+    uploadArea.addEventListener('click', (e) => {
+      if (e.target.id !== 'uploadRemove') pdfInput.click();
+    });
+
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === 'application/pdf') handlePDF(file);
+    });
+
+    pdfInput.addEventListener('change', () => {
+      if (pdfInput.files[0]) handlePDF(pdfInput.files[0]);
+    });
+
+    document.getElementById('uploadRemove').addEventListener('click', (e) => {
+      e.stopPropagation();
+      pdfText = '';
+      pdfInput.value = '';
+      uploadContent.style.display = 'block';
+      uploadSuccess.style.display = 'none';
+    });
+
+    async function handlePDF(file) {
+      uploadContent.innerHTML = '<div class="spinner" style="width:24px;height:24px;border-width:2px;margin:0 auto;"></div><p style="font-size:13px;color:#6B7280;margin-top:8px;">Extracting text...</p>';
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch(`${API}/api/upload-pdf`, { method: 'POST', body: form });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.detail); }
+        const data = await res.json();
+        pdfText = data.text;
+        document.getElementById('uploadFilename').textContent = `${file.name} (${data.pages} pages)`;
+        uploadContent.style.display = 'none';
+        uploadSuccess.style.display = 'flex';
+      } catch (err) {
+        uploadContent.innerHTML = `<span class="upload-icon">📄</span><p class="upload-text">Drag & drop a PDF or <label for="pdfInput" class="upload-link">browse files</label></p><span class="upload-hint">PDF files up to 10MB</span>`;
+        showToast(`PDF error: ${err.message}`, 'error');
+      }
+    }
+
+    // ── Submit ───────────────────────────────
     document.getElementById('submitBtn').addEventListener('click', async () => {
-      const name = document.getElementById('patientName').value.trim();
-      const notes = document.getElementById('dischargeNotes').value.trim();
-      if (!name || !notes) return;
+      const name  = document.getElementById('patientName').value.trim();
+      const phone = document.getElementById('patientPhone').value.trim();
+      const email = document.getElementById('patientEmail').value.trim();
+      const notes = pdfText || document.getElementById('dischargeNotes').value.trim();
+
+      if (!name || !notes) {
+        showToast('Patient name and discharge notes are required', 'error');
+        return;
+      }
 
       modalForm.style.display = 'none';
       modalFooter.style.display = 'none';
@@ -318,19 +444,26 @@
         const res = await fetch(`${API}/api/process-discharge`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patient_name: name, discharge_notes: notes }),
+          body: JSON.stringify({
+            patient_name: name,
+            discharge_notes: notes,
+            phone_number: phone,
+            email: email,
+          }),
         });
         clearInterval(interval);
 
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || 'Processing failed');
-        }
+        if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Processing failed'); }
 
         const data = await res.json();
         closeModal();
         document.getElementById('patientName').value = '';
+        document.getElementById('patientPhone').value = '';
+        document.getElementById('patientEmail').value = '';
         document.getElementById('dischargeNotes').value = '';
+        pdfText = '';
+        uploadContent.style.display = 'block';
+        uploadSuccess.style.display = 'none';
         await loadRoster();
 
         window.open(`/doctor/patient/${data.patient_id}`, '_blank');
@@ -344,6 +477,48 @@
         errorMsg.classList.add('active');
       }
     });
+
+    // ── Send to Patient ──────────────────────
+    async function sendToPatient(patientId) {
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = '⏳ Sending...';
+
+      try {
+        const res = await fetch(`${API}/api/send-to-patient/${patientId}`, { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.detail || 'Send failed');
+
+        let msg = 'Sent! ';
+        if (data.sms === 'sent') msg += '📱 SMS ';
+        if (data.email === 'sent') msg += '✉️ Email ';
+        if (data.sms === 'twilio_not_configured') msg += '(SMS: Twilio not configured) ';
+        if (data.email === 'smtp_not_configured') msg += '(Email: SMTP not configured) ';
+
+        btn.textContent = '✓ Sent';
+        btn.classList.add('sent');
+        showToast(msg, 'success');
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '📩 Send to Patient';
+        showToast(`Send failed: ${err.message}`, 'error');
+      }
+    }
+
+    // ── Toast ────────────────────────────────
+    function showToast(msg, type) {
+      let toast = document.getElementById('toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.className = `toast active ${type}`;
+      setTimeout(() => { toast.classList.remove('active'); }, 4000);
+    }
 
     function esc(str) {
       const d = document.createElement('div');

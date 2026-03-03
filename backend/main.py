@@ -133,6 +133,8 @@ class DischargeInput(BaseModel):
     patient_name:       str
     discharge_notes:    str
     patient_id:         Optional[str] = None
+    phone_number:       Optional[str] = None
+    email:              Optional[str] = None
 
 class ResourceSet(BaseModel):
     voice_script:       str
@@ -187,6 +189,8 @@ async def list_patients():
             "date": sd.get("procedure_date", ""),
             "hasResources": d.get("resources") is not None,
             "pipelineType": d.get("pipeline_type", "post_op"),
+            "phone": d.get("phone", ""),
+            "email": d.get("email", ""),
         })
     return {"patients": patients}
 
@@ -248,6 +252,116 @@ async def doctor_patient_view(patient_id: str):
     return HTMLResponse(content=html)
 
 
+# ─── PDF Upload ───────────────────────────────────────────────
+from fastapi import File, UploadFile, Form
+
+@app.post("/api/upload-pdf")
+async def upload_pdf(file: UploadFile = File(...)):
+    """Extract text from an uploaded PDF discharge document."""
+    try:
+        from PyPDF2 import PdfReader
+        import io
+
+        content = await file.read()
+        reader = PdfReader(io.BytesIO(content))
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() or ""
+
+        if not text.strip():
+            raise HTTPException(status_code=422, detail="Could not extract text from PDF. The file may be scanned/image-based.")
+
+        return {"text": text.strip(), "pages": len(reader.pages)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF processing failed: {str(e)}")
+
+
+# ─── Send to Patient ──────────────────────────────────────────
+@app.post("/api/send-to-patient/{patient_id}")
+async def send_to_patient(patient_id: str):
+    """Send the patient dashboard link via SMS (Twilio) and email."""
+    if patient_id not in _patient_store:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    d = _patient_store[patient_id]
+    name = d.get("name", "Patient")
+    first_name = name.split()[0]
+    phone = d.get("phone", "")
+    email = d.get("email", "")
+    base_url = os.getenv("BASE_URL", "http://localhost:8000")
+    dashboard_url = f"{base_url}/patient/{patient_id}"
+
+    results = {"sms": None, "email": None}
+
+    # SMS via Twilio
+    if phone:
+        try:
+            sms_body = (
+                f"Hi {first_name}, your post-surgery recovery resources from your care team are ready. "
+                f"View your personalized recovery plan here: {dashboard_url} "
+                f"(Best viewed on a computer)"
+            )
+            sid = TwilioClient().send(to=phone, body=sms_body)
+            results["sms"] = "sent" if sid else "twilio_not_configured"
+        except Exception as e:
+            print(f"[send] SMS error: {e}")
+            results["sms"] = f"error: {str(e)}"
+
+    # Email via Twilio SendGrid (or simple SMTP fallback)
+    if email:
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+
+            smtp_host = os.getenv("SMTP_HOST")
+            smtp_user = os.getenv("SMTP_USER")
+            smtp_pass = os.getenv("SMTP_PASS")
+
+            if smtp_host and smtp_user and smtp_pass:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = f"Your Recovery Resources Are Ready - CareGuide"
+                msg["From"] = smtp_user
+                msg["To"] = email
+
+                html_body = f"""
+                <div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:24px;">
+                    <div style="background:linear-gradient(135deg,#1A3C8F,#2563EB);color:#fff;padding:24px;border-radius:12px;text-align:center;margin-bottom:20px;">
+                        <h1 style="font-size:20px;margin-bottom:6px;">CareGuide</h1>
+                        <p style="font-size:14px;opacity:.85;">Your Recovery Resources Are Ready</p>
+                    </div>
+                    <p style="font-size:15px;color:#374151;line-height:1.6;margin-bottom:16px;">
+                        Hi {first_name}, your care team has prepared personalized recovery resources for you, including voice explanations and quick reference guides.
+                    </p>
+                    <a href="{dashboard_url}" style="display:block;text-align:center;background:#2563EB;color:#fff;padding:14px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:16px;">
+                        View Your Recovery Plan
+                    </a>
+                    <p style="font-size:13px;color:#6B7280;text-align:center;">Best viewed on a computer or tablet.</p>
+                </div>
+                """
+                msg.attach(MIMEText(html_body, "html"))
+
+                with smtplib.SMTP(smtp_host, int(os.getenv("SMTP_PORT", "587"))) as server:
+                    server.starttls()
+                    server.login(smtp_user, smtp_pass)
+                    server.send_message(msg)
+                results["email"] = "sent"
+            else:
+                results["email"] = "smtp_not_configured"
+                print(f"[send] Email skipped — SMTP not configured. Would send to: {email}")
+
+        except Exception as e:
+            print(f"[send] Email error: {e}")
+            results["email"] = f"error: {str(e)}"
+
+    if not phone and not email:
+        raise HTTPException(status_code=422, detail="No phone number or email on file for this patient")
+
+    return {"patient_id": patient_id, "dashboard_url": dashboard_url, **results}
+
+
 # ─── New Two-Resource Pipeline ────────────────────────────────
 @app.post("/api/process-discharge")
 async def process_discharge(input_data: DischargeInput):
@@ -269,7 +383,7 @@ async def process_discharge(input_data: DischargeInput):
             "metadata": {
                 "patient_id": patient_id,
                 "patient_name": input_data.patient_name,
-                "phone_number": "",
+                "phone_number": input_data.phone_number or "",
             },
             "clinical_data": {
                 "clinical_notes": input_data.discharge_notes,
@@ -307,7 +421,8 @@ async def process_discharge(input_data: DischargeInput):
         # 5. Store everything
         _patient_store[patient_id] = {
             "name": input_data.patient_name,
-            "phone": "",
+            "phone": input_data.phone_number or "",
+            "email": input_data.email or "",
             "pipeline_type": "post_op",
             "voice_audio_url": diag_audio,
             "battlecard_html": resources["diagnosis"]["battlecard_html"],
