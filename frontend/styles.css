@@ -233,41 +233,85 @@ body {
   color: #fff;
 }
 
-/* ─── Resource Tabs ──────────────────────────────────────── */
-.resource-tabs {
+/* ─── Resource Navigation Cards ─────────────────────────── */
+.resource-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.resource-card {
   display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--gray-200);
-  margin-bottom: 20px;
-}
-
-.tab-btn {
-  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border: none;
-  background: none;
-  font-family: var(--font);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--gray-500);
+  gap: 14px;
+  padding: 20px;
+  background: var(--gray-50);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  border-radius: 8px 8px 0 0;
-  transition: color .15s, background .15s;
+  font-family: var(--font);
+  text-align: left;
+  transition: all .2s;
 }
 
-.tab-btn:hover { color: var(--primary); background: var(--primary-light); }
-
-.tab-btn.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+.resource-card:hover {
+  border-color: var(--primary);
   background: var(--primary-light);
+  box-shadow: var(--shadow);
 }
 
-.tab-icon { font-size: 13px; }
+.resource-card.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.resource-card-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--primary-light);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.resource-card.active .resource-card-icon {
+  background: var(--primary);
+  color: #fff;
+}
+
+.resource-card-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resource-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.resource-card-sub {
+  font-size: 13px;
+  color: var(--gray-500);
+  font-weight: 400;
+}
+
+.resource-card-arrow {
+  font-size: 18px;
+  color: var(--gray-400);
+  flex-shrink: 0;
+  transition: transform .15s;
+}
+
+.resource-card:hover .resource-card-arrow { transform: translateX(2px); }
+.resource-card.active .resource-card-arrow { color: var(--primary); }
 
 .tab-content { display: none; }
 .tab-content.active { display: block; }
@@ -960,10 +1004,7 @@ body {
 
   .chat-container { height: 380px; }
 
-  .resource-tabs { flex-direction: column; gap: 0; border-bottom: none; }
-
-  .tab-btn { border-radius: 8px; border-bottom: 1px solid var(--gray-200); }
-  .tab-btn.active { border-bottom-color: transparent; }
+  .resource-nav { grid-template-columns: 1fr; }
 
   .panel-title-row {
     flex-direction: column;

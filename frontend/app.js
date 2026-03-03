@@ -40,18 +40,14 @@ function initPatientInfo() {
   if (callBtn && PATIENT.phoneTeam) callBtn.href = `tel:${PATIENT.phoneTeam}`;
 }
 
-// ─── Tabs ─────────────────────────────────────────────────────
+// ─── Tabs (resource cards) ────────────────────────────────────
 function initTabs() {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  document.querySelectorAll('.resource-card').forEach(btn => {
     btn.addEventListener('click', () => {
       const target = btn.dataset.tab;
-      document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('active');
-        b.setAttribute('aria-selected', 'false');
-      });
+      document.querySelectorAll('.resource-card').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
-      btn.setAttribute('aria-selected', 'true');
       document.getElementById(`tab-${target}`).classList.add('active');
     });
   });
