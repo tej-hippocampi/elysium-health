@@ -27,7 +27,7 @@ Follow `[Voice Script Knowledge Base]` guide precisely to generate the best scri
 - Use `[empathetic]` when acknowledging fear, confusion, or overwhelm
 - Use `[clear]` when correcting misconceptions or explaining what the diagnosis is NOT
 
-### Structure (3-5 min MAX, 450-750 words — DO NOT exceed 5 minutes)
+### Structure (STRICT: 4 min target, 5 min absolute max. 550-600 words HARD CAP. Count your words — if over 600, cut immediately.)
 1. **Opening** (15-20s): Greet by name, acknowledge the appointment or moment of diagnosis, state purpose of this video
 2. **What This Diagnosis Means** (60-90s): Explain the condition in plain language — what it is, what it affects, and why the patient has it based on their specific history
 3. **Why Your Symptoms Make Sense** (45-60s): Connect the patient's specific reported symptoms to the diagnosis so they feel understood and validated

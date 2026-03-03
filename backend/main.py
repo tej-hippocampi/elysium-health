@@ -48,6 +48,7 @@ async def _seed_demo_patient() -> None:
     _patient_store["maria_001"] = {
         "name": "Maria L.",
         "phone": "",
+        "email": "",
         "pipeline_type": "post_op",
         "voice_audio_url": None,
         "battlecard_html": "",

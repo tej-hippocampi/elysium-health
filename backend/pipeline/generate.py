@@ -72,8 +72,8 @@ class GenerationLayer:
         # --- Diagnosis resource ---
         diagnosis_voice = self._call_claude(
             system=DIAGNOSIS_VOICE_PROMPT,
-            user=f"[Clinical Input Layer]\n\n{clinical_input}\n\nGenerate the voice script.",
-            max_tokens=2000,
+            user=f"[Clinical Input Layer]\n\n{clinical_input}\n\nGenerate the voice script. HARD LIMIT: 550-600 words maximum.",
+            max_tokens=1500,
         )
 
         diagnosis_battlecard = self._call_claude(
@@ -85,8 +85,8 @@ class GenerationLayer:
         # --- Treatment & Red Flags resource ---
         treatment_voice = self._call_claude(
             system=TREATMENT_VOICE_PROMPT,
-            user=f"[Clinical Input Layer]\n\n{clinical_input}\n\nGenerate the voice script.",
-            max_tokens=2500,
+            user=f"[Clinical Input Layer]\n\n{clinical_input}\n\nGenerate the voice script. HARD LIMIT: 550-600 words maximum.",
+            max_tokens=1500,
         )
 
         treatment_battlecard = self._call_claude(

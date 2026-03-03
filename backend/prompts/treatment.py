@@ -27,7 +27,7 @@ Follow `[Voice Script Knowledge Base]` guide precisely to generate the best scri
 - Use `[reassuring]` for normal symptoms, `[firm]` for red flags
 - Use `[empathetic]` for pain/discomfort acknowledgment
 
-### Structure (3-5 min MAX, 450-750 words — DO NOT exceed 5 minutes)
+### Structure (STRICT: 4 min target, 5 min absolute max. 550-600 words HARD CAP. Count your words — if over 600, cut immediately.)
 1. **Opening** (15-20s): Greet by name, acknowledge they just had surgery, state purpose
 2. **What Happened** (30-45s): Briefly explain what was done and why recovery instructions matter for THIS patient
 3. **The ONE Thing** (15s): State critical action (usually: take meds as prescribed, or know red flags)
