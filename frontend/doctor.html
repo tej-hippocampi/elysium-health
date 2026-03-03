@@ -80,15 +80,18 @@
     /* Add Patient Modal */
     .modal-overlay {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
-      z-index: 200; justify-content: center; align-items: center; padding: 20px;
+      z-index: 200; justify-content: flex-start; align-items: flex-start;
+      padding: 40px 20px; overflow-y: auto; -webkit-overflow-scrolling: touch;
     }
     .modal-overlay.active { display: flex; }
     .modal {
       background: #fff; border-radius: 16px; width: 100%; max-width: 600px;
+      margin: auto;
       box-shadow: 0 25px 60px rgba(0,0,0,.25); animation: modal-in .25s ease-out;
+      flex-shrink: 0;
     }
     @keyframes modal-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-    .modal-header { padding: 24px 28px 0; display: flex; justify-content: space-between; align-items: center; }
+    .modal-header { padding: 24px 28px 0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: #fff; border-radius: 16px 16px 0 0; z-index: 1; }
     .modal-header h2 { font-size: 20px; font-weight: 700; color: var(--gray-900); }
     .modal-close { width: 32px; height: 32px; border: none; background: var(--gray-100); border-radius: 8px; font-size: 18px; cursor: pointer; color: var(--gray-500); display: flex; align-items: center; justify-content: center; }
     .modal-close:hover { background: var(--gray-200); }
@@ -100,8 +103,8 @@
       font-family: var(--font); font-size: 14px; color: var(--gray-800); outline: none; transition: border-color .15s;
     }
     .form-group input:focus, .form-group textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
-    .form-group textarea { min-height: 200px; resize: vertical; line-height: 1.6; }
-    .modal-footer { padding: 0 28px 24px; display: flex; justify-content: flex-end; gap: 10px; }
+    .form-group textarea { min-height: 160px; resize: vertical; line-height: 1.6; }
+    .modal-footer { padding: 16px 28px 24px; display: flex; justify-content: flex-end; gap: 10px; position: sticky; bottom: 0; background: #fff; border-radius: 0 0 16px 16px; border-top: 1px solid var(--gray-100); }
     .btn-cancel { padding: 10px 20px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: var(--font); font-size: 14px; font-weight: 500; cursor: pointer; background: #fff; color: var(--gray-600); }
     .btn-submit {
       padding: 10px 24px; border: none; border-radius: 10px; font-family: var(--font);
