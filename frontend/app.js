@@ -38,6 +38,11 @@ function initPatientInfo() {
   }
   const callBtn = document.getElementById('callTeamBtn');
   if (callBtn && PATIENT.phoneTeam) callBtn.href = `tel:${PATIENT.phoneTeam}`;
+
+  if (PATIENT.doctorView) {
+    const backBtn = document.getElementById('backToRoster');
+    if (backBtn) backBtn.style.display = 'inline';
+  }
 }
 
 // ─── Tabs (resource cards) ────────────────────────────────────

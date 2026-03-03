@@ -165,13 +165,87 @@ class ChatResponse(BaseModel):
     audio_url:  Optional[str] = None
 
 
-# ─── Upload Page ──────────────────────────────────────────────
+# ─── Doctor Portal ────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
-async def upload_page():
-    """Serves the discharge notes upload page for user testing."""
-    html_path = os.path.join(os.path.dirname(__file__), "../frontend/upload.html")
+async def doctor_portal():
+    """Serves the doctor dashboard — patient roster + add patient."""
+    html_path = os.path.join(os.path.dirname(__file__), "../frontend/doctor.html")
     with open(html_path) as f:
         return HTMLResponse(content=f.read())
+
+
+@app.get("/api/patients")
+async def list_patients():
+    """Return all patients in the store for the doctor roster."""
+    patients = []
+    for pid, d in _patient_store.items():
+        sd = d.get("structured_data") or {}
+        patients.append({
+            "id": pid,
+            "name": d.get("name", "Unknown"),
+            "procedure": sd.get("procedure_name", ""),
+            "date": sd.get("procedure_date", ""),
+            "hasResources": d.get("resources") is not None,
+            "pipelineType": d.get("pipeline_type", "post_op"),
+        })
+    return {"patients": patients}
+
+
+@app.get("/doctor/patient/{patient_id}", response_class=HTMLResponse)
+async def doctor_patient_view(patient_id: str):
+    """Doctor's view of a patient dashboard (same as patient view but with back-to-roster nav)."""
+    if patient_id not in _patient_store:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    d = _patient_store[patient_id]
+
+    def clean_html(html):
+        h = (html or "").strip()
+        if h.startswith("```"):
+            h = h.split("\n", 1)[1] if "\n" in h else h[3:]
+            if h.endswith("```"):
+                h = h[:-3].strip()
+        return h
+
+    resources = d.get("resources")
+    resources_json = None
+    if resources:
+        resources_json = {
+            "diagnosis": {
+                "voice_audio_url": resources["diagnosis"].get("voice_audio_url"),
+                "battlecard_html": clean_html(resources["diagnosis"].get("battlecard_html", "")),
+            },
+            "treatment": {
+                "voice_audio_url": resources["treatment"].get("voice_audio_url"),
+                "battlecard_html": clean_html(resources["treatment"].get("battlecard_html", "")),
+            },
+        }
+
+    patient_json = json.dumps({
+        "id":           patient_id,
+        "name":         d["name"],
+        "firstName":    d["name"].split()[0],
+        "pipelineType": d["pipeline_type"],
+        "procedure":    d["structured_data"].get("procedure_name", ""),
+        "visitDate":    d["structured_data"].get("procedure_date", ""),
+        "audioUrl":     d.get("voice_audio_url") or None,
+        "tavusUrl":     d.get("avatar_url") or None,
+        "phoneTeam":    os.getenv("CARE_TEAM_PHONE", ""),
+        "hasResources": resources_json is not None,
+        "resources":    resources_json,
+        "doctorView":   True,
+    })
+
+    html_path = os.path.join(os.path.dirname(__file__), "../frontend/index.html")
+    with open(html_path) as f:
+        html = f.read()
+
+    inject = f"<script>window.__PATIENT__ = {patient_json};</script>"
+    html = html.replace("</head>", f"{inject}\n</head>")
+    voice_url = f"/patient/{patient_id}/voice"
+    html = html.replace('id="voiceAvatarBtn" href="#"', f'id="voiceAvatarBtn" href="{voice_url}"')
+
+    return HTMLResponse(content=html)
 
 
 # ─── New Two-Resource Pipeline ────────────────────────────────
