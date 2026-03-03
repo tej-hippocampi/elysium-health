@@ -21,7 +21,7 @@ twilio==9.2.3
 PyPDF2==3.0.1
 
 # File uploads
-python-multipart==0.0.22
+python-multipart>=0.0.5
 
 # Environment config
 python-dotenv==1.0.1
