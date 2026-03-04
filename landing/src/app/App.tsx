@@ -117,9 +117,14 @@ function LandingContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
-            <button className="premium-button group relative">
+            <a
+              href="https://calendly.com/tejxpatel23/elysium-health-intro"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="premium-button group relative inline-block text-center no-underline"
+            >
               <span className="relative z-10">Book a demo</span>
-            </button>
+            </a>
           </motion.div>
         </div>
       </div>
