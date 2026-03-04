@@ -25,3 +25,8 @@ python-multipart>=0.0.5
 
 # Environment config
 python-dotenv==1.0.1
+
+# Auth (landing / Elysium Health)
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+email-validator>=2.0.0

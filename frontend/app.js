@@ -20,7 +20,7 @@ const PATIENT = window.__PATIENT__ || {
 
 document.addEventListener('DOMContentLoaded', () => {
   initPatientInfo();
-  initTabs();
+  initOverlays();
   initChat();
   initSuggestedQuestions();
   initFooterActions();
@@ -45,23 +45,48 @@ function initPatientInfo() {
   }
 }
 
-// ─── Tabs (resource cards) ────────────────────────────────────
-function initTabs() {
-  document.querySelectorAll('.resource-card').forEach(btn => {
+// ─── Overlays (click Diagnosis or Treatment → full-screen that section only) ─
+function initOverlays() {
+  document.querySelectorAll('.resource-card[data-overlay]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const target = btn.dataset.tab;
-      document.querySelectorAll('.resource-card').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(`tab-${target}`).classList.add('active');
+      const overlayId = `overlay-${btn.dataset.overlay}`;
+      const overlay = document.getElementById(overlayId);
+      if (overlay) {
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+      }
     });
   });
+
+  function closeOverlay(overlayEl) {
+    if (!overlayEl) return;
+    overlayEl.classList.remove('is-open');
+    overlayEl.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('backDiagnosis')?.addEventListener('click', () => {
+    closeOverlay(document.getElementById('overlay-diagnosis'));
+  });
+  document.getElementById('backTreatment')?.addEventListener('click', () => {
+    closeOverlay(document.getElementById('overlay-treatment'));
+  });
+
+  const voiceLinkDiag = document.getElementById('voiceLinkDiagnosis');
+  const voiceLinkTreat = document.getElementById('voiceLinkTreatment');
+  if (voiceLinkDiag) voiceLinkDiag.href = `/patient/${PATIENT.id}/voice`;
+  if (voiceLinkTreat) voiceLinkTreat.href = `/patient/${PATIENT.id}/voice`;
 }
 
 function initQuestionsButton() {
-  document.getElementById('questionsBtn')?.addEventListener('click', showCareGuide);
+  document.getElementById('questionsBtn')?.addEventListener('click', goToVoiceGuide);
   const voiceBtn = document.getElementById('voiceAvatarBtn');
   if (voiceBtn) voiceBtn.href = `/patient/${PATIENT.id}/voice`;
+}
+
+function goToVoiceGuide() {
+  window.location.href = `/patient/${PATIENT.id}/voice`;
 }
 
 function showCareGuide() {
@@ -264,7 +289,7 @@ function getChatHistory() {
 }
 
 function initFooterActions() {
-  document.getElementById('openAvatarBtn')?.addEventListener('click', showCareGuide);
+  document.getElementById('openAvatarBtn')?.addEventListener('click', goToVoiceGuide);
 }
 
 function setText(id, val) {

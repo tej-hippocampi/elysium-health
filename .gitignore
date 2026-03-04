@@ -13,3 +13,10 @@ venv/
 
 # macOS
 .DS_Store
+
+# Auth (user store — do not commit)
+backend/auth_users.json
+
+# Landing (dependencies and build)
+landing/node_modules/
+landing/dist/
