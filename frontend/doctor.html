@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doctor Portal | CareGuide</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #2563EB;
+      --primary-dark: #1D4ED8;
+      --primary-light: #EFF6FF;
+      --gray-50: #F9FAFB; --gray-100: #F3F4F6; --gray-200: #E5E7EB;
+      --gray-300: #D1D5DB; --gray-400: #9CA3AF; --gray-500: #6B7280;
+      --gray-600: #4B5563; --gray-700: #374151; --gray-800: #1F2937; --gray-900: #111827;
+      --success: #10B981; --warning: #F59E0B; --danger: #EF4444;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: #EFF4FB; color: var(--gray-800); min-height: 100vh; }
+
+    /* Header */
+    .header { background: #fff; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    .header-inner { max-width: 1000px; margin: 0 auto; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; color: var(--primary); }
+    .logo-icon { width: 34px; height: 34px; background: var(--primary); border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: 700; }
+    .header-badge { display: flex; align-items: center; gap: 8px; background: var(--primary-light); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--primary); }
+
+    /* Main */
+    .main { max-width: 1000px; margin: 0 auto; padding: 28px 24px 60px; }
+
+    /* Stats Row */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .stat-label { font-size: 13px; font-weight: 500; color: var(--gray-500); margin-bottom: 6px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--gray-900); }
+    .stat-value.success { color: var(--success); }
+
+    /* Section Titles */
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .section-title { font-size: 18px; font-weight: 700; color: var(--gray-900); display: flex; align-items: center; gap: 10px; }
+    .section-title::before { content: ''; display: inline-block; width: 4px; height: 22px; background: var(--primary); border-radius: 2px; }
+
+    /* Add Patient Button */
+    .add-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 22px; background: linear-gradient(135deg, #1A3C8F, #2563EB);
+      color: #fff; border: none; border-radius: 10px; font-family: var(--font);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(37,99,235,.3); transition: transform .15s, box-shadow .15s;
+    }
+    .add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(37,99,235,.4); }
+
+    /* Patient Table */
+    .roster-card { background: #fff; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1); overflow: hidden; margin-bottom: 28px; }
+    .roster-table { width: 100%; border-collapse: collapse; }
+    .roster-table th { text-align: left; padding: 14px 20px; font-size: 12px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); }
+    .roster-table td { padding: 16px 20px; font-size: 14px; border-bottom: 1px solid var(--gray-100); }
+    .roster-table tr:last-child td { border-bottom: none; }
+    .roster-table tr:hover td { background: var(--primary-light); }
+    .patient-name-cell { font-weight: 600; color: var(--gray-900); }
+    .procedure-cell { color: var(--gray-600); }
+    .date-cell { color: var(--gray-500); font-size: 13px; }
+    .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .status-ready { background: #D1FAE5; color: #065F46; }
+    .status-pending { background: #FEF3C7; color: #92400E; }
+    .action-btns { display: flex; gap: 8px; }
+    .view-btn {
+      padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      font-family: var(--font); cursor: pointer; text-decoration: none; transition: all .15s;
+      border: 1px solid var(--gray-200); background: #fff; color: var(--gray-700);
+    }
+    .view-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .view-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .view-btn.primary:hover { background: var(--primary-dark); }
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--gray-500); }
+    .empty-state p { font-size: 15px; margin-bottom: 8px; }
+    .empty-state span { font-size: 13px; }
+
+    /* Add Patient Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      z-index: 200; justify-content: flex-start; align-items: flex-start;
+      padding: 40px 20px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #fff; border-radius: 16px; width: 100%; max-width: 600px;
+      margin: auto;
+      box-shadow: 0 25px 60px rgba(0,0,0,.25); animation: modal-in .25s ease-out;
+      flex-shrink: 0;
+    }
+    @keyframes modal-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .modal-header { padding: 24px 28px 0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: #fff; border-radius: 16px 16px 0 0; z-index: 1; }
+    .modal-header h2 { font-size: 20px; font-weight: 700; color: var(--gray-900); }
+    .modal-close { width: 32px; height: 32px; border: none; background: var(--gray-100); border-radius: 8px; font-size: 18px; cursor: pointer; color: var(--gray-500); display: flex; align-items: center; justify-content: center; }
+    .modal-close:hover { background: var(--gray-200); }
+    .modal-body { padding: 24px 28px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+    .form-group input, .form-group textarea {
+      width: 100%; padding: 11px 16px; border: 1px solid var(--gray-200); border-radius: 10px;
+      font-family: var(--font); font-size: 14px; color: var(--gray-800); outline: none; transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    .form-group textarea { min-height: 160px; resize: vertical; line-height: 1.6; }
+    .modal-footer { padding: 16px 28px 24px; display: flex; justify-content: flex-end; gap: 10px; position: sticky; bottom: 0; background: #fff; border-radius: 0 0 16px 16px; border-top: 1px solid var(--gray-100); }
+    .btn-cancel { padding: 10px 20px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: var(--font); font-size: 14px; font-weight: 500; cursor: pointer; background: #fff; color: var(--gray-600); }
+    .btn-submit {
+      padding: 10px 24px; border: none; border-radius: 10px; font-family: var(--font);
+      font-size: 14px; font-weight: 600; cursor: pointer; background: var(--primary); color: #fff;
+      box-shadow: 0 2px 8px rgba(37,99,235,.3);
+    }
+    .btn-submit:hover { background: var(--primary-dark); }
+    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Processing overlay */
+    .processing-overlay { display: none; text-align: center; padding: 32px; }
+    .processing-overlay.active { display: block; }
+    .processing-overlay .spinner { width: 36px; height: 36px; border: 3px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .processing-overlay p { font-size: 14px; color: var(--gray-500); }
+    .processing-overlay .step { font-size: 12px; color: var(--gray-400); margin-top: 6px; }
+    .error-msg { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 10px; padding: 12px 16px; color: #991B1B; font-size: 13px; margin-top: 14px; display: none; }
+    .error-msg.active { display: block; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .upload-area {
+      border: 2px dashed var(--gray-300); border-radius: 10px; padding: 24px;
+      text-align: center; transition: border-color .2s, background .2s; cursor: pointer;
+    }
+    .upload-area:hover, .upload-area.dragover { border-color: var(--primary); background: var(--primary-light); }
+    .upload-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+    .upload-text { font-size: 14px; color: var(--gray-600); margin-bottom: 4px; }
+    .upload-link { color: var(--primary); font-weight: 600; cursor: pointer; text-decoration: underline; }
+    .upload-hint { font-size: 12px; color: var(--gray-400); }
+    .upload-success { display: flex; align-items: center; gap: 10px; justify-content: center; }
+    .upload-check { color: var(--success); font-size: 20px; font-weight: 700; }
+    .upload-filename { font-size: 14px; font-weight: 600; color: var(--gray-700); }
+    .upload-remove { background: none; border: none; font-size: 18px; color: var(--gray-400); cursor: pointer; padding: 4px; }
+    .upload-remove:hover { color: var(--danger); }
+
+    .or-divider { display: flex; align-items: center; gap: 12px; margin: 14px 0; }
+    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
+    .or-divider span { font-size: 12px; color: var(--gray-400); font-weight: 500; white-space: nowrap; }
+
+    .send-btn-cell {
+      padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      font-family: var(--font); cursor: pointer; text-decoration: none; transition: all .15s;
+      border: none; background: #10B981; color: #fff;
+    }
+    .send-btn-cell:hover { background: #059669; }
+    .send-btn-cell:disabled { opacity: .5; cursor: not-allowed; }
+    .send-btn-cell.sent { background: var(--gray-200); color: var(--gray-500); }
+
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; background: var(--gray-900); color: #fff;
+      padding: 14px 20px; border-radius: 10px; font-size: 14px; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2); z-index: 300; animation: toast-in .3s ease-out;
+      display: none;
+    }
+    .toast.active { display: block; }
+    .toast.success { background: #065F46; }
+    .toast.error { background: #991B1B; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .roster-table th:nth-child(3), .roster-table td:nth-child(3) { display: none; }
+      .action-btns { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">+</div>
+        <span>CareGuide</span>
+      </div>
+      <div class="header-badge">👨‍⚕️ Doctor Portal</div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Patients</div>
+        <div class="stat-value" id="totalPatients">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Resources Generated</div>
+        <div class="stat-value success" id="resourcesReady">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value" id="pendingCount">0</div>
+      </div>
+    </div>
+
+    <!-- Roster -->
+    <div class="section-header">
+      <h2 class="section-title">Patient Roster</h2>
+      <button class="add-btn" id="addPatientBtn">+ Add Patient</button>
+    </div>
+
+    <div class="roster-card">
+      <table class="roster-table" id="rosterTable">
+        <thead>
+          <tr>
+            <th>Patient</th>
+            <th>Procedure</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rosterBody">
+        </tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none;">
+        <p>No patients yet</p>
+        <span>Click "+ Add Patient" to process discharge notes</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Add Patient Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Add New Patient</h2>
+        <button class="modal-close" id="modalClose">×</button>
+      </div>
+      <div class="modal-body" id="modalForm">
+        <div class="form-group">
+          <label for="patientName">Patient Name *</label>
+          <input type="text" id="patientName" placeholder="e.g. Maria L." required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="patientPhone">Phone Number</label>
+            <input type="tel" id="patientPhone" placeholder="+1 (555) 123-4567" />
+          </div>
+          <div class="form-group">
+            <label for="patientEmail">Email</label>
+            <input type="email" id="patientEmail" placeholder="patient@email.com" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Discharge Notes *</label>
+          <div class="upload-area" id="uploadArea">
+            <div class="upload-content" id="uploadContent">
+              <span class="upload-icon">📄</span>
+              <p class="upload-text">Drag & drop a PDF or <label for="pdfInput" class="upload-link">browse files</label></p>
+              <span class="upload-hint">PDF files up to 10MB</span>
+            </div>
+            <div class="upload-success" id="uploadSuccess" style="display:none;">
+              <span class="upload-check">✓</span>
+              <span class="upload-filename" id="uploadFilename"></span>
+              <button class="upload-remove" id="uploadRemove" type="button">×</button>
+            </div>
+            <input type="file" id="pdfInput" accept=".pdf" style="display:none;" />
+          </div>
+          <div class="or-divider"><span>or paste text below</span></div>
+          <textarea id="dischargeNotes" placeholder="Paste the full post-discharge notes, after-visit summary, medication list, clinical notes..."></textarea>
+        </div>
+      </div>
+      <div class="processing-overlay" id="processing">
+        <div class="spinner"></div>
+        <p>Generating resources...</p>
+        <div class="step" id="processingStep">Extracting clinical data</div>
+      </div>
+      <div class="error-msg" id="errorMsg"></div>
+      <div class="modal-footer" id="modalFooter">
+        <button class="btn-cancel" id="cancelBtn">Cancel</button>
+        <button class="btn-submit" id="submitBtn">Generate Resources</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin;
+
+    const rosterBody   = document.getElementById('rosterBody');
+    const emptyState   = document.getElementById('emptyState');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const processing   = document.getElementById('processing');
+    const modalForm    = document.getElementById('modalForm');
+    const modalFooter  = document.getElementById('modalFooter');
+    const errorMsg     = document.getElementById('errorMsg');
+    const stepEl       = document.getElementById('processingStep');
+
+    // ── Load Roster ─────────────────────────
+    async function loadRoster() {
+      const res = await fetch(`${API}/api/patients`);
+      const data = await res.json();
+      const patients = data.patients || [];
+
+      document.getElementById('totalPatients').textContent = patients.length;
+      document.getElementById('resourcesReady').textContent = patients.filter(p => p.hasResources).length;
+      document.getElementById('pendingCount').textContent = patients.filter(p => !p.hasResources).length;
+
+      if (patients.length === 0) {
+        rosterBody.innerHTML = '';
+        emptyState.style.display = 'block';
+        document.querySelector('.roster-table').style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      document.querySelector('.roster-table').style.display = 'table';
+
+      rosterBody.innerHTML = patients.map(p => {
+        const hasContact = p.phone || p.email;
+        return `
+        <tr>
+          <td class="patient-name-cell">${esc(p.name)}</td>
+          <td class="procedure-cell">${esc(p.procedure || '—')}</td>
+          <td class="date-cell">${esc(p.date || '—')}</td>
+          <td>
+            <span class="status-badge ${p.hasResources ? 'status-ready' : 'status-pending'}">
+              ${p.hasResources ? '● Ready' : '○ Demo'}
+            </span>
+          </td>
+          <td>
+            <div class="action-btns">
+              <a href="/doctor/patient/${p.id}" class="view-btn primary">View Dashboard</a>
+              <button class="send-btn-cell" onclick="sendToPatient('${p.id}')" ${!hasContact ? 'disabled title="No contact info"' : ''}>
+                📩 Send to Patient
+              </button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // ── Modal ────────────────────────────────
+    document.getElementById('addPatientBtn').addEventListener('click', () => {
+      modalOverlay.classList.add('active');
+      resetModal();
+    });
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+
+    function closeModal() {
+      modalOverlay.classList.remove('active');
+      resetModal();
+    }
+    function resetModal() {
+      modalForm.style.display = 'block';
+      modalFooter.style.display = 'flex';
+      processing.classList.remove('active');
+      errorMsg.classList.remove('active');
+    }
+
+    // ── Submit ───────────────────────────────
+    const steps = [
+      'Extracting clinical data',
+      'Generating diagnosis voice script',
+      'Generating treatment voice script',
+      'Creating battlecard HTML',
+      'Synthesizing audio',
+      'Building patient dashboard',
+    ];
+
+    // ── PDF Upload ─────────────────────────
+    const uploadArea = document.getElementById('uploadArea');
+    const pdfInput   = document.getElementById('pdfInput');
+    const uploadContent = document.getElementById('uploadContent');
+    const uploadSuccess = document.getElementById('uploadSuccess');
+    let pdfText = '';
+
+    uploadArea.addEventListener('click', (e) => {
+      if (e.target.id !== 'uploadRemove') pdfInput.click();
+    });
+
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === 'application/pdf') handlePDF(file);
+    });
+
+    pdfInput.addEventListener('change', () => {
+      if (pdfInput.files[0]) handlePDF(pdfInput.files[0]);
+    });
+
+    document.getElementById('uploadRemove').addEventListener('click', (e) => {
+      e.stopPropagation();
+      pdfText = '';
+      pdfInput.value = '';
+      uploadContent.style.display = 'block';
+      uploadSuccess.style.display = 'none';
+    });
+
+    async function handlePDF(file) {
+      uploadContent.innerHTML = '<div class="spinner" style="width:24px;height:24px;border-width:2px;margin:0 auto;"></div><p style="font-size:13px;color:#6B7280;margin-top:8px;">Extracting text...</p>';
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch(`${API}/api/upload-pdf`, { method: 'POST', body: form });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.detail); }
+        const data = await res.json();
+        pdfText = data.text;
+        document.getElementById('uploadFilename').textContent = `${file.name} (${data.pages} pages)`;
+        uploadContent.style.display = 'none';
+        uploadSuccess.style.display = 'flex';
+      } catch (err) {
+        uploadContent.innerHTML = `<span class="upload-icon">📄</span><p class="upload-text">Drag & drop a PDF or <label for="pdfInput" class="upload-link">browse files</label></p><span class="upload-hint">PDF files up to 10MB</span>`;
+        showToast(`PDF error: ${err.message}`, 'error');
+      }
+    }
+
+    // ── Submit ───────────────────────────────
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const name  = document.getElementById('patientName').value.trim();
+      const phone = document.getElementById('patientPhone').value.trim();
+      const email = document.getElementById('patientEmail').value.trim();
+      const notes = pdfText || document.getElementById('dischargeNotes').value.trim();
+
+      if (!name || !notes) {
+        showToast('Patient name and discharge notes are required', 'error');
+        return;
+      }
+
+      modalForm.style.display = 'none';
+      modalFooter.style.display = 'none';
+      processing.classList.add('active');
+      errorMsg.classList.remove('active');
+
+      let stepIdx = 0;
+      const interval = setInterval(() => {
+        stepIdx = (stepIdx + 1) % steps.length;
+        stepEl.textContent = steps[stepIdx];
+      }, 4000);
+
+      try {
+        const res = await fetch(`${API}/api/process-discharge`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patient_name: name,
+            discharge_notes: notes,
+            phone_number: phone,
+            email: email,
+          }),
+        });
+        clearInterval(interval);
+
+        if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Processing failed'); }
+
+        const data = await res.json();
+        closeModal();
+        document.getElementById('patientName').value = '';
+        document.getElementById('patientPhone').value = '';
+        document.getElementById('patientEmail').value = '';
+        document.getElementById('dischargeNotes').value = '';
+        pdfText = '';
+        uploadContent.style.display = 'block';
+        uploadSuccess.style.display = 'none';
+        await loadRoster();
+
+        window.open(`/doctor/patient/${data.patient_id}`, '_blank');
+
+      } catch (err) {
+        clearInterval(interval);
+        processing.classList.remove('active');
+        modalForm.style.display = 'block';
+        modalFooter.style.display = 'flex';
+        errorMsg.textContent = `Error: ${err.message}`;
+        errorMsg.classList.add('active');
+      }
+    });
+
+    // ── Send to Patient ──────────────────────
+    async function sendToPatient(patientId) {
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = '⏳ Sending...';
+
+      try {
+        const res = await fetch(`${API}/api/send-to-patient/${patientId}`, { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.detail || 'Send failed');
+
+        let msg = 'Sent! ';
+        if (data.sms === 'sent') msg += '📱 SMS ';
+        if (data.email === 'sent') msg += '✉️ Email ';
+        if (data.sms === 'twilio_not_configured') msg += '(SMS: Twilio not configured) ';
+        if (data.email === 'smtp_not_configured') msg += '(Email: SMTP not configured) ';
+
+        btn.textContent = '✓ Sent';
+        btn.classList.add('sent');
+        showToast(msg, 'success');
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '📩 Send to Patient';
+        showToast(`Send failed: ${err.message}`, 'error');
+      }
+    }
+
+    // ── Toast ────────────────────────────────
+    function showToast(msg, type) {
+      let toast = document.getElementById('toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.className = `toast active ${type}`;
+      setTimeout(() => { toast.classList.remove('active'); }, 4000);
+    }
+
+    function esc(str) {
+      const d = document.createElement('div');
+      d.appendChild(document.createTextNode(str || ''));
+      return d.innerHTML;
+    }
+
+    // ── Init ─────────────────────────────────
+    loadRoster();
+  </script>
+</body>
+</html>

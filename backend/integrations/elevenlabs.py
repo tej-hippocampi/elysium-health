@@ -16,8 +16,7 @@ import httpx
 class ElevenLabsClient:
     BASE_URL = "https://api.elevenlabs.io/v1"
 
-    # Clinical care voice — warm, calm, female. Override via ELEVENLABS_VOICE_ID env var.
-    DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
+    DEFAULT_VOICE_ID = "l4Coq6695JDX9xtLqXDE"
 
     def __init__(self) -> None:
         self.api_key  = os.getenv("ELEVENLABS_API_KEY")
@@ -90,5 +89,4 @@ class ElevenLabsClient:
 
         filepath.write_bytes(audio_bytes)
 
-        base_url = os.getenv("BASE_URL", "http://localhost:8000")
-        return f"{base_url}/audio/{filename}"
+        return f"/audio/{filename}"

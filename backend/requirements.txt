@@ -17,5 +17,11 @@ pydantic==2.8.2
 # SMS
 twilio==9.2.3
 
+# PDF parsing
+PyPDF2==3.0.1
+
+# File uploads
+python-multipart>=0.0.5
+
 # Environment config
 python-dotenv==1.0.1

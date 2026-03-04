@@ -200,41 +200,118 @@ body {
 
 .section-divider { height: 1px; background: var(--gray-100); margin: 0 32px; }
 
-/* ─── Resource Tabs ──────────────────────────────────────── */
-.resource-tabs {
+/* ─── Panel Actions (buttons row) ────────────────────────── */
+.panel-actions {
   display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--gray-200);
-  margin-bottom: 20px;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.tab-btn {
+.voice-avatar-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
+  gap: 6px;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #4A9EBF, #2D7D9A);
+  color: #fff;
   border: none;
-  background: none;
+  border-radius: 20px;
   font-family: var(--font);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--gray-500);
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  border-radius: 8px 8px 0 0;
-  transition: color .15s, background .15s;
+  text-decoration: none;
+  transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 2px 8px rgba(74, 158, 191, .25);
+  flex-shrink: 0;
 }
 
-.tab-btn:hover { color: var(--primary); background: var(--primary-light); }
+.voice-avatar-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 158, 191, .35);
+  color: #fff;
+}
 
-.tab-btn.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+/* ─── Resource Navigation Cards ─────────────────────────── */
+.resource-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.resource-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px;
+  background: var(--gray-50);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+  transition: all .2s;
+}
+
+.resource-card:hover {
+  border-color: var(--primary);
   background: var(--primary-light);
+  box-shadow: var(--shadow);
 }
 
-.tab-icon { font-size: 13px; }
+.resource-card.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.resource-card-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--primary-light);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.resource-card.active .resource-card-icon {
+  background: var(--primary);
+  color: #fff;
+}
+
+.resource-card-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resource-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.resource-card-sub {
+  font-size: 13px;
+  color: var(--gray-500);
+  font-weight: 400;
+}
+
+.resource-card-arrow {
+  font-size: 18px;
+  color: var(--gray-400);
+  flex-shrink: 0;
+  transition: transform .15s;
+}
+
+.resource-card:hover .resource-card-arrow { transform: translateX(2px); }
+.resource-card.active .resource-card-arrow { color: var(--primary); }
 
 .tab-content { display: none; }
 .tab-content.active { display: block; }
@@ -333,6 +410,38 @@ body {
   min-width: 72px;
   text-align: right;
   flex-shrink: 0;
+}
+
+/* ─── Speed Control ─────────────────────────────────────── */
+.speed-control {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.speed-btn {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.5);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.speed-btn:hover {
+  background: rgba(255,255,255,.2);
+  color: rgba(255,255,255,.8);
+}
+
+.speed-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
 }
 
 /* ─── Battlecard ─────────────────────────────────────────── */
@@ -635,6 +744,19 @@ body {
   color: var(--gray-900);
 }
 
+/* ─── Resource Sections ─────────────────────────────────── */
+.resource-section { padding-top: 4px; }
+
+.resource-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ─── Panel Title Row (title + button) ──────────────────── */
 .panel-title-row {
   display: flex;
@@ -882,10 +1004,7 @@ body {
 
   .chat-container { height: 380px; }
 
-  .resource-tabs { flex-direction: column; gap: 0; border-bottom: none; }
-
-  .tab-btn { border-radius: 8px; border-bottom: 1px solid var(--gray-200); }
-  .tab-btn.active { border-bottom-color: transparent; }
+  .resource-nav { grid-template-columns: 1fr; }
 
   .panel-title-row {
     flex-direction: column;

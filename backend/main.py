@@ -4,6 +4,7 @@ FastAPI backend: EHR → Pipeline → Dashboard → SMS
 """
 
 import os
+import json
 from typing import Optional, List
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -27,27 +28,27 @@ from integrations.twilio_client import TwilioClient
 app = FastAPI(
     title="CareGuide Surgical Patient Platform",
     description="Personalized surgical education videos generated from EHR data.",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # Restrict to your domain in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# In-memory patient store — replace with PostgreSQL/DynamoDB in production
 _patient_store: dict = {}
 
 # ─── Demo Seed ────────────────────────────────────────────────
 @app.on_event("startup")
 async def _seed_demo_patient() -> None:
-    """Pre-populate demo patient so chat works without running the full pipeline."""
+    """Pre-populate demo patient so the dashboard works without running the full pipeline."""
     _patient_store["maria_001"] = {
         "name": "Maria L.",
         "phone": "",
+        "email": "",
         "pipeline_type": "post_op",
         "voice_audio_url": None,
         "battlecard_html": "",
@@ -112,7 +113,8 @@ async def _seed_demo_patient() -> None:
                 "provider": "Oncology clinic",
                 "notes": "Blood count recheck",
             },
-        }
+        },
+        "resources": None,
     }
 
 # ─── Request / Response Models ────────────────────────────────
@@ -120,17 +122,36 @@ class EHRBundle(BaseModel):
     patient_id:         str
     patient_name:       str
     phone_number:       str
-    pmh:                str   # Past medical history
-    procedure_context:  str   # Scheduling + surgical plan
+    pmh:                str
+    procedure_context:  str
     after_visit_summary: str
     clinical_notes:     str
     medication_list:    str
     allergies:          str
     problem_list:       str
 
+class DischargeInput(BaseModel):
+    patient_name:       str
+    discharge_notes:    str
+    patient_id:         Optional[str] = None
+    phone_number:       Optional[str] = None
+    email:              Optional[str] = None
+
+class ResourceSet(BaseModel):
+    voice_script:       str
+    battlecard_html:    str
+    voice_audio_url:    Optional[str] = None
+
+class DischargeResponse(BaseModel):
+    patient_id:         str
+    dashboard_url:      str
+    diagnosis:          ResourceSet
+    treatment:          ResourceSet
+    structured_data:    dict
+
 class ProcessResponse(BaseModel):
     patient_id:       str
-    pipeline_type:    str          # "pre_op" | "post_op"
+    pipeline_type:    str
     dashboard_url:    str
     voice_audio_url:  Optional[str]
     battlecard_html:  str
@@ -146,31 +167,316 @@ class ChatResponse(BaseModel):
     patient_id: str
     audio_url:  Optional[str] = None
 
-# ─── Routes ───────────────────────────────────────────────────
+
+# ─── Doctor Portal ────────────────────────────────────────────
+@app.get("/", response_class=HTMLResponse)
+async def doctor_portal():
+    """Serves the doctor dashboard — patient roster + add patient."""
+    html_path = os.path.join(os.path.dirname(__file__), "../frontend/doctor.html")
+    with open(html_path) as f:
+        return HTMLResponse(content=f.read())
+
+
+@app.get("/api/patients")
+async def list_patients():
+    """Return all patients in the store for the doctor roster."""
+    patients = []
+    for pid, d in _patient_store.items():
+        sd = d.get("structured_data") or {}
+        patients.append({
+            "id": pid,
+            "name": d.get("name", "Unknown"),
+            "procedure": sd.get("procedure_name", ""),
+            "date": sd.get("procedure_date", ""),
+            "hasResources": d.get("resources") is not None,
+            "pipelineType": d.get("pipeline_type", "post_op"),
+            "phone": d.get("phone", ""),
+            "email": d.get("email", ""),
+        })
+    return {"patients": patients}
+
+
+@app.get("/doctor/patient/{patient_id}", response_class=HTMLResponse)
+async def doctor_patient_view(patient_id: str):
+    """Doctor's view of a patient dashboard (same as patient view but with back-to-roster nav)."""
+    if patient_id not in _patient_store:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    d = _patient_store[patient_id]
+
+    def clean_html(html):
+        h = (html or "").strip()
+        if h.startswith("```"):
+            h = h.split("\n", 1)[1] if "\n" in h else h[3:]
+            if h.endswith("```"):
+                h = h[:-3].strip()
+        return h
+
+    resources = d.get("resources")
+    resources_json = None
+    if resources:
+        resources_json = {
+            "diagnosis": {
+                "voice_audio_url": resources["diagnosis"].get("voice_audio_url"),
+                "battlecard_html": clean_html(resources["diagnosis"].get("battlecard_html", "")),
+            },
+            "treatment": {
+                "voice_audio_url": resources["treatment"].get("voice_audio_url"),
+                "battlecard_html": clean_html(resources["treatment"].get("battlecard_html", "")),
+            },
+        }
+
+    patient_json = json.dumps({
+        "id":           patient_id,
+        "name":         d["name"],
+        "firstName":    d["name"].split()[0],
+        "pipelineType": d["pipeline_type"],
+        "procedure":    d["structured_data"].get("procedure_name", ""),
+        "visitDate":    d["structured_data"].get("procedure_date", ""),
+        "audioUrl":     d.get("voice_audio_url") or None,
+        "tavusUrl":     d.get("avatar_url") or None,
+        "phoneTeam":    os.getenv("CARE_TEAM_PHONE", ""),
+        "hasResources": resources_json is not None,
+        "resources":    resources_json,
+        "doctorView":   True,
+    })
+
+    html_path = os.path.join(os.path.dirname(__file__), "../frontend/index.html")
+    with open(html_path) as f:
+        html = f.read()
+
+    inject = f"<script>window.__PATIENT__ = {patient_json};</script>"
+    html = html.replace("</head>", f"{inject}\n</head>")
+    voice_url = f"/patient/{patient_id}/voice"
+    html = html.replace('id="voiceAvatarBtn" href="#"', f'id="voiceAvatarBtn" href="{voice_url}"')
+
+    return HTMLResponse(content=html)
+
+
+# ─── PDF Upload ───────────────────────────────────────────────
+from fastapi import File, UploadFile, Form
+
+@app.post("/api/upload-pdf")
+async def upload_pdf(file: UploadFile = File(...)):
+    """Extract text from an uploaded PDF discharge document."""
+    try:
+        from PyPDF2 import PdfReader
+        import io
+
+        content = await file.read()
+        reader = PdfReader(io.BytesIO(content))
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() or ""
+
+        if not text.strip():
+            raise HTTPException(status_code=422, detail="Could not extract text from PDF. The file may be scanned/image-based.")
+
+        return {"text": text.strip(), "pages": len(reader.pages)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF processing failed: {str(e)}")
+
+
+# ─── Send to Patient ──────────────────────────────────────────
+@app.post("/api/send-to-patient/{patient_id}")
+async def send_to_patient(patient_id: str):
+    """Send the patient dashboard link via SMS (Twilio) and email."""
+    if patient_id not in _patient_store:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    d = _patient_store[patient_id]
+    name = d.get("name", "Patient")
+    first_name = name.split()[0]
+    phone = d.get("phone", "")
+    email = d.get("email", "")
+    base_url = os.getenv("BASE_URL", "http://localhost:8000")
+    dashboard_url = f"{base_url}/patient/{patient_id}"
+
+    results = {"sms": None, "email": None}
+
+    # SMS via Twilio
+    if phone:
+        try:
+            sms_body = (
+                f"Hi {first_name}, your post-surgery recovery resources from your care team are ready. "
+                f"View your personalized recovery plan here: {dashboard_url} "
+                f"(Best viewed on a computer)"
+            )
+            sid = TwilioClient().send(to=phone, body=sms_body)
+            results["sms"] = "sent" if sid else "twilio_not_configured"
+        except Exception as e:
+            print(f"[send] SMS error: {e}")
+            results["sms"] = f"error: {str(e)}"
+
+    # Email via Twilio SendGrid (or simple SMTP fallback)
+    if email:
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+
+            smtp_host = os.getenv("SMTP_HOST")
+            smtp_user = os.getenv("SMTP_USER")
+            smtp_pass = os.getenv("SMTP_PASS")
+
+            if smtp_host and smtp_user and smtp_pass:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = f"Your Recovery Resources Are Ready - CareGuide"
+                msg["From"] = smtp_user
+                msg["To"] = email
+
+                html_body = f"""
+                <div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:24px;">
+                    <div style="background:linear-gradient(135deg,#1A3C8F,#2563EB);color:#fff;padding:24px;border-radius:12px;text-align:center;margin-bottom:20px;">
+                        <h1 style="font-size:20px;margin-bottom:6px;">CareGuide</h1>
+                        <p style="font-size:14px;opacity:.85;">Your Recovery Resources Are Ready</p>
+                    </div>
+                    <p style="font-size:15px;color:#374151;line-height:1.6;margin-bottom:16px;">
+                        Hi {first_name}, your care team has prepared personalized recovery resources for you, including voice explanations and quick reference guides.
+                    </p>
+                    <a href="{dashboard_url}" style="display:block;text-align:center;background:#2563EB;color:#fff;padding:14px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:16px;">
+                        View Your Recovery Plan
+                    </a>
+                    <p style="font-size:13px;color:#6B7280;text-align:center;">Best viewed on a computer or tablet.</p>
+                </div>
+                """
+                msg.attach(MIMEText(html_body, "html"))
+
+                with smtplib.SMTP(smtp_host, int(os.getenv("SMTP_PORT", "587"))) as server:
+                    server.starttls()
+                    server.login(smtp_user, smtp_pass)
+                    server.send_message(msg)
+                results["email"] = "sent"
+            else:
+                results["email"] = "smtp_not_configured"
+                print(f"[send] Email skipped — SMTP not configured. Would send to: {email}")
+
+        except Exception as e:
+            print(f"[send] Email error: {e}")
+            results["email"] = f"error: {str(e)}"
+
+    if not phone and not email:
+        raise HTTPException(status_code=422, detail="No phone number or email on file for this patient")
+
+    return {"patient_id": patient_id, "dashboard_url": dashboard_url, **results}
+
+
+# ─── New Two-Resource Pipeline ────────────────────────────────
+@app.post("/api/process-discharge")
+async def process_discharge(input_data: DischargeInput):
+    """
+    Full two-resource pipeline:
+      Raw discharge notes → Extract → Generate (Diagnosis + Treatment)
+                         → ElevenLabs audio for each → Store
+
+    Returns both resource sets for immediate display.
+    """
+    import uuid
+
+    patient_id = input_data.patient_id or f"pt_{uuid.uuid4().hex[:8]}"
+
+    try:
+        # 1. Extract structured data from raw discharge notes
+        print(f"[pipeline] Starting extraction for {patient_id}...")
+        raw_package = {
+            "metadata": {
+                "patient_id": patient_id,
+                "patient_name": input_data.patient_name,
+                "phone_number": input_data.phone_number or "",
+            },
+            "clinical_data": {
+                "clinical_notes": input_data.discharge_notes,
+                "after_visit_summary": input_data.discharge_notes,
+                "pmh": "",
+                "procedure_context": "",
+                "medication_list": "",
+                "allergies": "",
+                "problem_list": "",
+            },
+        }
+
+        structured_data = await ExtractionLayer().extract(raw_package)
+        print(f"[pipeline] Extraction complete. Generating resources...")
+
+        # 2. Generate two resource sets (diagnosis + treatment)
+        generator = GenerationLayer()
+        resources = await generator.generate_two_resources(structured_data)
+        print(f"[pipeline] Generation complete. Synthesizing audio...")
+
+        # 3. Synthesize audio for both via ElevenLabs
+        el_client = ElevenLabsClient()
+        diag_audio = await el_client.synthesize(
+            resources["diagnosis"]["voice_script"], f"{patient_id}_diagnosis"
+        )
+        treat_audio = await el_client.synthesize(
+            resources["treatment"]["voice_script"], f"{patient_id}_treatment"
+        )
+        print(f"[pipeline] Audio synthesis complete. Storing results...")
+
+        # 4. Build dashboard URL
+        base_url = os.getenv("BASE_URL", "http://localhost:8000")
+        dashboard_url = f"{base_url}/patient/{patient_id}"
+
+        # 5. Store everything
+        _patient_store[patient_id] = {
+            "name": input_data.patient_name,
+            "phone": input_data.phone_number or "",
+            "email": input_data.email or "",
+            "pipeline_type": "post_op",
+            "voice_audio_url": diag_audio,
+            "battlecard_html": resources["diagnosis"]["battlecard_html"],
+            "avatar_url": None,
+            "voice_script": resources["diagnosis"]["voice_script"],
+            "structured_data": structured_data,
+            "resources": {
+                "diagnosis": {
+                    "voice_script": resources["diagnosis"]["voice_script"],
+                    "battlecard_html": resources["diagnosis"]["battlecard_html"],
+                    "voice_audio_url": diag_audio,
+                },
+                "treatment": {
+                    "voice_script": resources["treatment"]["voice_script"],
+                    "battlecard_html": resources["treatment"]["battlecard_html"],
+                    "voice_audio_url": treat_audio,
+                },
+            },
+        }
+
+        print(f"[pipeline] Done! Dashboard: {dashboard_url}")
+
+        return {
+            "patient_id": patient_id,
+            "dashboard_url": dashboard_url,
+            "diagnosis": {
+                "voice_script": resources["diagnosis"]["voice_script"],
+                "battlecard_html": resources["diagnosis"]["battlecard_html"],
+                "voice_audio_url": diag_audio,
+            },
+            "treatment": {
+                "voice_script": resources["treatment"]["voice_script"],
+                "battlecard_html": resources["treatment"]["battlecard_html"],
+                "voice_audio_url": treat_audio,
+            },
+            "structured_data": structured_data,
+        }
+
+    except Exception as exc:
+        print(f"[pipeline] ERROR: {type(exc).__name__}: {exc}")
+        raise HTTPException(status_code=500, detail=f"Pipeline failed: {str(exc)}")
+
+
+# ─── Legacy Process Patient ───────────────────────────────────
 @app.post("/api/process-patient", response_model=ProcessResponse)
 async def process_patient(bundle: EHRBundle, background_tasks: BackgroundTasks):
-    """
-    Full pipeline:
-      EHR Bundle → Ingest → Extract → Classify → Generate
-                → ElevenLabs audio → Tavus avatar → SMS notify
-    """
-    # 1. Ingest
+    """Legacy full pipeline (single resource set)."""
     raw_package = IngestLayer().process(bundle.model_dump())
-
-    # 2. Extract structured clinical data via Claude
     structured_data = await ExtractionLayer().extract(raw_package)
-
-    # 3. Route to Pre-Op or Post-Op engine
     pipeline_type = ClassificationLayer().classify(structured_data)
-
-    # 4. Generate voice script + battlecard HTML
     generator = GenerationLayer()
     voice_script, battlecard_html = await generator.generate(structured_data, pipeline_type)
-
-    # 5. Synthesize audio (ElevenLabs)
     audio_url = await ElevenLabsClient().synthesize(voice_script, bundle.patient_id)
-
-    # 6. Create Tavus conversational avatar with knowledge base
     avatar = await TavusClient().create_conversation(
         patient_id=bundle.patient_id,
         knowledge_base={
@@ -179,12 +485,8 @@ async def process_patient(bundle: EHRBundle, background_tasks: BackgroundTasks):
             "ehr_summary":   structured_data,
         },
     )
-
-    # 7. Build dashboard URL
     base_url      = os.getenv("BASE_URL", "http://localhost:8000")
     dashboard_url = f"{base_url}/patient/{bundle.patient_id}"
-
-    # Store for later retrieval
     _patient_store[bundle.patient_id] = {
         "name":                bundle.patient_name,
         "phone":               bundle.phone_number,
@@ -194,62 +496,67 @@ async def process_patient(bundle: EHRBundle, background_tasks: BackgroundTasks):
         "avatar_url":          avatar.get("conversation_url"),
         "structured_data":     structured_data,
         "voice_script":        voice_script,
+        "resources":           None,
     }
-
-    # 8. Send SMS in background
     background_tasks.add_task(
-        _send_sms,
-        phone=bundle.phone_number,
-        name=bundle.patient_name,
-        dashboard_url=dashboard_url,
+        _send_sms, phone=bundle.phone_number, name=bundle.patient_name, dashboard_url=dashboard_url,
+    )
+    return ProcessResponse(
+        patient_id=bundle.patient_id, pipeline_type=pipeline_type,
+        dashboard_url=dashboard_url, voice_audio_url=audio_url,
+        battlecard_html=battlecard_html, avatar_url=avatar.get("conversation_url"),
     )
 
-    return ProcessResponse(
-        patient_id=bundle.patient_id,
-        pipeline_type=pipeline_type,
-        dashboard_url=dashboard_url,
-        voice_audio_url=audio_url,
-        battlecard_html=battlecard_html,
-        avatar_url=avatar.get("conversation_url"),
-    )
+
+# ─── Resource Endpoints ───────────────────────────────────────
+@app.get("/api/patient/{patient_id}/resources")
+async def get_patient_resources(patient_id: str):
+    """Return the two-resource sets (diagnosis + treatment) if available."""
+    if patient_id not in _patient_store:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    resources = _patient_store[patient_id].get("resources")
+    if not resources:
+        raise HTTPException(status_code=404, detail="No split resources generated for this patient")
+
+    def clean_html(html):
+        """Strip markdown code fences if Claude wrapped the HTML."""
+        h = (html or "").strip()
+        if h.startswith("```"):
+            h = h.split("\n", 1)[1] if "\n" in h else h[3:]
+            if h.endswith("```"):
+                h = h[:-3].strip()
+        return h
+
+    for key in ("diagnosis", "treatment"):
+        if key in resources and "battlecard_html" in resources[key]:
+            resources[key]["battlecard_html"] = clean_html(resources[key]["battlecard_html"])
+
+    return resources
 
 
 @app.get("/api/patient/{patient_id}/audio")
 async def get_patient_audio(patient_id: str):
-    """
-    Returns the voice audio URL for a patient, generating it on-demand if needed.
-    The audio is synthesized from the stored voice_script via ElevenLabs.
-    """
     if patient_id not in _patient_store:
         raise HTTPException(status_code=404, detail="Patient not found")
-
     store = _patient_store[patient_id]
-
-    # Return cached URL if the audio file still exists on disk
     cached_url = store.get("voice_audio_url")
     if cached_url:
-        import urllib.parse, re
         filename = cached_url.split("/audio/")[-1]
         from pathlib import Path
         if Path(f"/tmp/{filename}").exists():
-            return {"audio_url": cached_url}
-
-    # Generate audio from voice_script
+            return {"audio_url": f"/audio/{filename}"}
     voice_script = store.get("voice_script")
     if not voice_script:
         raise HTTPException(status_code=422, detail="No voice script available for this patient")
-
     audio_url = await ElevenLabsClient().synthesize(voice_script, patient_id)
     if not audio_url:
         raise HTTPException(status_code=503, detail="ElevenLabs not configured — set ELEVENLABS_API_KEY")
-
     store["voice_audio_url"] = audio_url
     return {"audio_url": audio_url}
 
 
 @app.get("/api/patient/{patient_id}/battlecard")
 async def get_battlecard(patient_id: str):
-    """Return the pre-generated battlecard HTML for the patient dashboard."""
     if patient_id not in _patient_store:
         raise HTTPException(status_code=404, detail="Patient not found")
     return {"html": _patient_store[patient_id]["battlecard_html"]}
@@ -257,7 +564,6 @@ async def get_battlecard(patient_id: str):
 
 @app.get("/api/patient/{patient_id}/config")
 async def get_dashboard_config(patient_id: str):
-    """Return full dashboard config injected as window.__PATIENT__ on the HTML page."""
     if patient_id not in _patient_store:
         raise HTTPException(status_code=404, detail="Patient not found")
     d = _patient_store[patient_id]
@@ -270,12 +576,12 @@ async def get_dashboard_config(patient_id: str):
         "audioUrl":      d["voice_audio_url"],
         "tavusUrl":      d["avatar_url"],
         "phoneTeam":     os.getenv("CARE_TEAM_PHONE", ""),
+        "hasResources":  d.get("resources") is not None,
     }
 
 
 @app.get("/api/patient/{patient_id}/discharge")
 async def get_discharge_instructions(patient_id: str):
-    """Return the full structured discharge instructions for rendering."""
     if patient_id not in _patient_store:
         raise HTTPException(status_code=404, detail="Patient not found")
     d = _patient_store[patient_id]
@@ -285,16 +591,58 @@ async def get_discharge_instructions(patient_id: str):
     }
 
 
-@app.get("/patient/{patient_id}", response_class=HTMLResponse)
-async def patient_dashboard(patient_id: str):
-    """
-    Serves the patient-facing dashboard with patient context
-    injected into window.__PATIENT__ for the frontend.
-    """
+@app.get("/patient/{patient_id}/voice", response_class=HTMLResponse)
+async def voice_avatar_page(patient_id: str):
+    """Serves the voice avatar conversation interface."""
     if patient_id not in _patient_store:
         raise HTTPException(status_code=404, detail="Patient not found")
 
     d = _patient_store[patient_id]
+    patient_json = json.dumps({
+        "id":        patient_id,
+        "name":      d["name"],
+        "firstName": d["name"].split()[0],
+        "procedure": d["structured_data"].get("procedure_name", ""),
+    })
+
+    html_path = os.path.join(os.path.dirname(__file__), "../frontend/voice-avatar.html")
+    with open(html_path) as f:
+        html = f.read()
+
+    inject = f"<script>window.__PATIENT__ = {patient_json};</script>"
+    html = html.replace("</head>", f"{inject}\n</head>")
+    return HTMLResponse(content=html)
+
+
+@app.get("/patient/{patient_id}", response_class=HTMLResponse)
+async def patient_dashboard(patient_id: str):
+    if patient_id not in _patient_store:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    d = _patient_store[patient_id]
+
+    def clean_html(html):
+        h = (html or "").strip()
+        if h.startswith("```"):
+            h = h.split("\n", 1)[1] if "\n" in h else h[3:]
+            if h.endswith("```"):
+                h = h[:-3].strip()
+        return h
+
+    resources = d.get("resources")
+    resources_json = None
+    if resources:
+        resources_json = {
+            "diagnosis": {
+                "voice_audio_url": resources["diagnosis"].get("voice_audio_url"),
+                "battlecard_html": clean_html(resources["diagnosis"].get("battlecard_html", "")),
+            },
+            "treatment": {
+                "voice_audio_url": resources["treatment"].get("voice_audio_url"),
+                "battlecard_html": clean_html(resources["treatment"].get("battlecard_html", "")),
+            },
+        }
+
     patient_json = {
         "id":           patient_id,
         "name":         d["name"],
@@ -302,31 +650,30 @@ async def patient_dashboard(patient_id: str):
         "pipelineType": d["pipeline_type"],
         "procedure":    d["structured_data"].get("procedure_name", ""),
         "visitDate":    d["structured_data"].get("procedure_date", ""),
-        "audioUrl":     d.get("voice_audio_url") or "null",
-        "tavusUrl":     d.get("avatar_url") or "null",
+        "audioUrl":     d.get("voice_audio_url") or None,
+        "tavusUrl":     d.get("avatar_url") or None,
         "phoneTeam":    os.getenv("CARE_TEAM_PHONE", ""),
+        "hasResources": resources_json is not None,
+        "resources":    resources_json,
     }
 
-    import json
     patient_json_str = json.dumps(patient_json)
 
     html_path = os.path.join(os.path.dirname(__file__), "../frontend/index.html")
     with open(html_path) as f:
         html = f.read()
 
-    # Inject patient context before </head>
     inject = f"<script>window.__PATIENT__ = {patient_json_str};</script>"
     html = html.replace("</head>", f"{inject}\n</head>")
+
+    voice_url = f"/patient/{patient_id}/voice"
+    html = html.replace('id="voiceAvatarBtn" href="#"', f'id="voiceAvatarBtn" href="{voice_url}"')
+
     return HTMLResponse(content=html)
 
 
 @app.post("/api/avatar/chat", response_model=ChatResponse)
 async def avatar_chat(req: ChatRequest):
-    """
-    Text-based AI avatar Q&A.
-    Answers ONLY from the patient's specific EHR data.
-    Falls back to this endpoint when Tavus is not active.
-    """
     if req.patient_id not in _patient_store:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -336,13 +683,17 @@ async def avatar_chat(req: ChatRequest):
         from prompts.avatar import build_avatar_system_prompt
         from anthropic import Anthropic
 
-        client        = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        system_prompt = build_avatar_system_prompt(patient_data["structured_data"])
+        client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+        clean_data = {k: v for k, v in patient_data["structured_data"].items()
+                      if k != "_raw_clinical"}
+        system_prompt = build_avatar_system_prompt(clean_data)
 
         messages = [{"role": m["role"], "content": m["content"]}
                     for m in req.conversation_history]
         messages.append({"role": "user", "content": req.message})
 
+        print(f"[avatar_chat] Sending to Claude for patient {req.patient_id}...")
         response = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=350,
@@ -351,23 +702,18 @@ async def avatar_chat(req: ChatRequest):
         )
 
         reply_text = response.content[0].text
-        audio_url  = await ElevenLabsClient().synthesize(reply_text, f"{req.patient_id}_chat")
+        print(f"[avatar_chat] Got response ({len(reply_text)} chars), synthesizing audio...")
+        audio_url = await ElevenLabsClient().synthesize(reply_text, f"{req.patient_id}_chat")
 
-        return ChatResponse(
-            response=reply_text,
-            patient_id=req.patient_id,
-            audio_url=audio_url,
-        )
+        return ChatResponse(response=reply_text, patient_id=req.patient_id, audio_url=audio_url)
 
     except Exception as exc:
-        print(f"[avatar_chat] error: {exc}")
+        import traceback
+        print(f"[avatar_chat] ERROR: {type(exc).__name__}: {exc}")
+        traceback.print_exc()
         return ChatResponse(
-            response=(
-                "I'm having a brief technical issue. "
-                "For urgent questions, please call your care team directly."
-            ),
-            patient_id=req.patient_id,
-            audio_url=None,
+            response="I'm having a brief technical issue. For urgent questions, please call your care team directly.",
+            patient_id=req.patient_id, audio_url=None,
         )
 
 
@@ -382,7 +728,7 @@ async def _send_sms(phone: str, name: str, dashboard_url: str) -> None:
     TwilioClient().send(to=phone, body=body)
 
 
-# ─── Static Files (fallback for local dev) ────────────────────
+# ─── Static Files ─────────────────────────────────────────────
 try:
     app.mount(
         "/static",

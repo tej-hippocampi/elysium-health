@@ -1,9 +1,10 @@
 """
 Content Generation Layer
-Purpose: Generate the voice script and battlecard HTML from structured clinical data.
+Purpose: Generate voice scripts and battlecard HTML from structured clinical data.
 
-Step 4 of the pipeline:
-  structured_data + pipeline_type → (voice_script, battlecard_html)
+Supports two generation modes:
+  1. Single resource (legacy): structured_data + pipeline_type → (voice_script, battlecard_html)
+  2. Two-resource split: structured_data → { diagnosis: ..., treatment: ... }
 """
 
 import os
@@ -13,6 +14,8 @@ from anthropic import Anthropic
 
 from prompts.preop  import PREOP_VOICE_PROMPT,  PREOP_BATTLECARD_PROMPT
 from prompts.postop import POSTOP_VOICE_PROMPT, POSTOP_BATTLECARD_PROMPT
+from prompts.diagnosis import DIAGNOSIS_VOICE_PROMPT, DIAGNOSIS_BATTLECARD_PROMPT
+from prompts.treatment import TREATMENT_VOICE_PROMPT, TREATMENT_BATTLECARD_PROMPT
 
 
 class GenerationLayer:
@@ -25,9 +28,8 @@ class GenerationLayer:
         pipeline_type: str,
     ) -> Tuple[str, str]:
         """
+        Legacy single-resource generation.
         Returns (voice_script, battlecard_html).
-        voice_script → ElevenLabs TTS + Tavus knowledge base
-        battlecard_html → rendered in patient dashboard tab
         """
         if pipeline_type == "pre_op":
             voice_sys      = PREOP_VOICE_PROMPT
@@ -38,22 +40,71 @@ class GenerationLayer:
 
         clinical_input = self._format_clinical_input(structured_data)
 
-        # Generate voice script first
         voice_script = self._call_claude(
             system=voice_sys,
             user=f"[Clinical Input Layer]\n\n{clinical_input}\n\nGenerate the voice script.",
             max_tokens=2000,
         )
 
-        # Generate battlecard from the voice script (battlecard extracts from script,
-        # not raw EHR, to ensure 100% content alignment)
         battlecard_html = self._call_claude(
             system=battlecard_sys,
             user=f"[Voice Script]\n\n{voice_script}\n\nGenerate the battlecard HTML.",
-            max_tokens=4000,
+            max_tokens=8000,
         )
 
         return voice_script, battlecard_html
+
+    async def generate_two_resources(
+        self,
+        structured_data: Dict[str, Any],
+    ) -> Dict[str, Dict[str, str]]:
+        """
+        Two-resource generation: produces separate Diagnosis and Treatment materials.
+
+        Returns:
+        {
+            "diagnosis": { "voice_script": str, "battlecard_html": str },
+            "treatment": { "voice_script": str, "battlecard_html": str }
+        }
+        """
+        clinical_input = self._format_clinical_input(structured_data)
+
+        # --- Diagnosis resource ---
+        diagnosis_voice = self._call_claude(
+            system=DIAGNOSIS_VOICE_PROMPT,
+            user=f"[Clinical Input Layer]\n\n{clinical_input}\n\nGenerate the voice script. HARD LIMIT: 550-600 words maximum.",
+            max_tokens=1500,
+        )
+
+        diagnosis_battlecard = self._call_claude(
+            system=DIAGNOSIS_BATTLECARD_PROMPT,
+            user=f"[Voice Script]\n\n{diagnosis_voice}\n\nGenerate the battlecard HTML.",
+            max_tokens=8000,
+        )
+
+        # --- Treatment & Red Flags resource ---
+        treatment_voice = self._call_claude(
+            system=TREATMENT_VOICE_PROMPT,
+            user=f"[Clinical Input Layer]\n\n{clinical_input}\n\nGenerate the voice script. HARD LIMIT: 550-600 words maximum.",
+            max_tokens=1500,
+        )
+
+        treatment_battlecard = self._call_claude(
+            system=TREATMENT_BATTLECARD_PROMPT,
+            user=f"[Voice Script]\n\n{treatment_voice}\n\nGenerate the battlecard HTML.",
+            max_tokens=8000,
+        )
+
+        return {
+            "diagnosis": {
+                "voice_script": diagnosis_voice,
+                "battlecard_html": diagnosis_battlecard,
+            },
+            "treatment": {
+                "voice_script": treatment_voice,
+                "battlecard_html": treatment_battlecard,
+            },
+        }
 
     # ── Private ──────────────────────────────────────────────
 
@@ -64,7 +115,16 @@ class GenerationLayer:
             system=system,
             messages=[{"role": "user", "content": user}],
         )
-        return response.content[0].text
+        text = response.content[0].text.strip()
+        if text.startswith("```"):
+            first_newline = text.find("\n")
+            if first_newline != -1:
+                text = text[first_newline + 1:]
+            else:
+                text = text[3:]
+            if text.endswith("```"):
+                text = text[:-3].strip()
+        return text
 
     def _format_clinical_input(self, d: Dict[str, Any]) -> str:
         """Convert structured EHR fields into a clean clinical text block for prompts."""
