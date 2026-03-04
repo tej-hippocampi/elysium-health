@@ -14,7 +14,12 @@
     <div class="header-inner">
       <div class="logo">
         <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;">
-          <div class="logo-icon">+</div>
+          <div class="logo-icon logo-icon-shield" aria-hidden="true">
+            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 0L0 6v8c0 7.5 5.5 13.5 12 14 6.5-.5 12-6.5 12-14V6L12 0z" fill="currentColor"/>
+              <path d="M12 8c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" fill="#fff"/>
+            </svg>
+          </div>
           <span>CareGuide</span>
         </a>
       </div>
@@ -26,14 +31,12 @@
     </div>
   </header>
 
-  <!-- ─── Main ──────────────────────────────────────────── -->
+  <!-- ─── Main (Dashboard: two cards only) ────────────────── -->
   <main class="main-content">
     <div class="page-wrapper">
 
       <!-- Recovery Plan Card -->
       <div class="recovery-card">
-
-        <!-- Card Header -->
         <div class="card-header">
           <div class="procedure-badge">
             <span class="badge-icon">⚕</span>
@@ -48,24 +51,20 @@
           </div>
         </div>
 
-        <!-- Card Body -->
         <div class="card-body">
           <div class="panel resources-panel">
             <div class="panel-title-row">
               <h2 class="panel-title">Post Discharge Resources</h2>
               <div class="panel-actions">
-                <a class="voice-avatar-btn" id="voiceAvatarBtn" href="#">
-                  🎙️ Voice Care Guide
-                </a>
                 <button class="questions-trigger-btn" id="questionsBtn">
                   💬 Any further questions?
                 </button>
               </div>
             </div>
 
-            <!-- Resource Navigation Cards -->
+            <!-- Two entry cards: click opens that section only (full-screen overlay) -->
             <div class="resource-nav" id="resourceTabs">
-              <button class="resource-card active" data-tab="diagnosis">
+              <button type="button" class="resource-card" data-overlay="diagnosis" id="cardDiagnosis">
                 <div class="resource-card-icon">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 </div>
@@ -75,7 +74,7 @@
                 </div>
                 <span class="resource-card-arrow">→</span>
               </button>
-              <button class="resource-card" data-tab="treatment">
+              <button type="button" class="resource-card" data-overlay="treatment" id="cardTreatment">
                 <div class="resource-card-icon">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="2"/><path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 </div>
@@ -86,84 +85,11 @@
                 <span class="resource-card-arrow">→</span>
               </button>
             </div>
-
-            <!-- Diagnosis Tab -->
-            <div class="tab-content active" id="tab-diagnosis" role="tabpanel">
-              <div class="resource-section">
-                <h3 class="resource-subtitle">🎧 Voice Explanation</h3>
-                <div class="video-wrapper">
-                  <div class="video-player" id="diagVideoPlayer">
-                    <div class="video-overlay" id="diagVideoOverlay">
-                      <button class="play-btn-large" id="diagPlayBtnLarge" aria-label="Play">▶</button>
-                      <p class="video-label">Understanding your diagnosis</p>
-                      <span class="video-duration">~3–5 min</span>
-                    </div>
-                  </div>
-                  <div class="video-controls">
-                    <button class="control-btn" id="diagPlayPauseBtn">▶ Play</button>
-                    <div class="progress-bar" id="diagProgressBar" role="progressbar">
-                      <div class="progress-fill" id="diagProgressFill"></div>
-                    </div>
-                    <span class="time-display" id="diagTimeDisplay">0:00 / 0:00</span>
-                    <div class="speed-control" data-player="diag">
-                      <button class="speed-btn active" data-speed="1">1x</button>
-                      <button class="speed-btn" data-speed="1.25">1.25x</button>
-                      <button class="speed-btn" data-speed="1.5">1.5x</button>
-                      <button class="speed-btn" data-speed="2">2x</button>
-                    </div>
-                  </div>
-                </div>
-                <h3 class="resource-subtitle" style="margin-top:24px;">📋 Quick Reference</h3>
-                <div class="battlecard-wrapper" id="diagBattlecardContainer">
-                  <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>Loading diagnosis reference…</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Treatment Tab -->
-            <div class="tab-content" id="tab-treatment" role="tabpanel">
-              <div class="resource-section">
-                <h3 class="resource-subtitle">🎧 Voice Explanation</h3>
-                <div class="video-wrapper">
-                  <div class="video-player" id="treatVideoPlayer">
-                    <div class="video-overlay" id="treatVideoOverlay">
-                      <button class="play-btn-large" id="treatPlayBtnLarge" aria-label="Play">▶</button>
-                      <p class="video-label">Your treatment plan & warning signs</p>
-                      <span class="video-duration">~3–5 min</span>
-                    </div>
-                  </div>
-                  <div class="video-controls">
-                    <button class="control-btn" id="treatPlayPauseBtn">▶ Play</button>
-                    <div class="progress-bar" id="treatProgressBar" role="progressbar">
-                      <div class="progress-fill" id="treatProgressFill"></div>
-                    </div>
-                    <span class="time-display" id="treatTimeDisplay">0:00 / 0:00</span>
-                    <div class="speed-control" data-player="treat">
-                      <button class="speed-btn active" data-speed="1">1x</button>
-                      <button class="speed-btn" data-speed="1.25">1.25x</button>
-                      <button class="speed-btn" data-speed="1.5">1.5x</button>
-                      <button class="speed-btn" data-speed="2">2x</button>
-                    </div>
-                  </div>
-                </div>
-                <h3 class="resource-subtitle" style="margin-top:24px;">📋 Quick Reference</h3>
-                <div class="battlecard-wrapper" id="treatBattlecardContainer">
-                  <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>Loading treatment reference…</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
       </div>
 
-      <!-- ── Care Guide Section (shown on button click) ── -->
+      <!-- Care Guide Section (shown on "Any further questions?" click) -->
       <div class="care-guide-card" id="careGuideSection" style="display: none;">
         <div class="panel avatar-panel" id="avatarPanel">
           <h2 class="panel-title">Ask Your Care Guide</h2>
@@ -171,7 +97,9 @@
             Your AI care guide has full context of your discharge materials and can answer
             questions about your diagnosis, medications, and what symptoms to watch for.
           </p>
-
+          <div class="panel-actions" style="margin-bottom:16px;">
+            <a class="voice-avatar-btn" id="voiceAvatarBtn" href="#">🎙️ Voice Care Guide</a>
+          </div>
           <div class="avatar-interface">
             <div class="avatar-video-container">
               <div class="tavus-embed" id="tavusContainer">
@@ -182,7 +110,6 @@
                 </div>
               </div>
             </div>
-
             <div class="chat-container">
               <div class="chat-messages" id="chatMessages" aria-live="polite">
                 <div class="message assistant-message">
@@ -193,22 +120,19 @@
                   <span class="message-time">Just now</span>
                 </div>
               </div>
-
               <div class="suggested-questions" id="suggestedQuestions">
-                <button class="suggestion-chip" data-q="Can you explain my diagnosis?">Explain my diagnosis</button>
-                <button class="suggestion-chip" data-q="How do I take my medications?">How to take medications?</button>
-                <button class="suggestion-chip" data-q="What are my red flag symptoms?">Red flag symptoms?</button>
+                <button type="button" class="suggestion-chip" data-q="Can you explain my diagnosis?">Explain my diagnosis</button>
+                <button type="button" class="suggestion-chip" data-q="How do I take my medications?">How to take medications?</button>
+                <button type="button" class="suggestion-chip" data-q="What are my red flag symptoms?">Red flag symptoms?</button>
               </div>
-
               <div class="chat-input-area">
                 <input type="text" id="chatInput" class="chat-input"
                   placeholder="Ask about your diagnosis, medications, recovery…"
                   autocomplete="off" aria-label="Type your question" />
-                <button class="send-btn" id="sendBtn" aria-label="Send message">
+                <button type="button" class="send-btn" id="sendBtn" aria-label="Send message">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <path d="M22 2L11 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-                    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2.5"
-                      stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
                 </button>
               </div>
@@ -225,7 +149,7 @@
             <p class="questions-sub">Your care guide is available 24/7</p>
           </div>
           <div class="questions-actions">
-            <button class="questions-btn primary" id="openAvatarBtn">
+            <button type="button" class="questions-btn primary" id="openAvatarBtn">
               💬 Talk to Your Care Guide
             </button>
             <a href="tel:" class="questions-btn secondary" id="callTeamBtn">
@@ -234,9 +158,88 @@
           </div>
         </div>
       </div>
-
     </div>
   </main>
+
+  <!-- ─── Full-screen overlay: Diagnosis (only this when open) ── -->
+  <div class="detail-overlay" id="overlay-diagnosis" aria-hidden="true">
+    <div class="detail-overlay-inner">
+      <header class="detail-header">
+        <button type="button" class="detail-back" id="backDiagnosis" aria-label="Back to resources">← Back</button>
+        <h1 class="detail-title">Diagnosis</h1>
+      </header>
+      <div class="detail-view-body">
+        <div class="detail-content-center">
+          <h3 class="resource-subtitle">🎧 Voice Explanation</h3>
+          <div class="voice-bar" id="diagVoiceBar">
+            <div class="voice-bar-inner">
+              <button type="button" class="control-btn" id="diagPlayPauseBtn">▶ Play</button>
+              <div class="progress-bar" id="diagProgressBar" role="progressbar">
+                <div class="progress-fill" id="diagProgressFill"></div>
+              </div>
+              <span class="time-display" id="diagTimeDisplay">0:00 / 0:00</span>
+              <div class="speed-control" data-player="diag">
+                <button type="button" class="speed-btn active" data-speed="1">1x</button>
+                <button type="button" class="speed-btn" data-speed="1.25">1.25x</button>
+                <button type="button" class="speed-btn" data-speed="1.5">1.5x</button>
+                <button type="button" class="speed-btn" data-speed="2">2x</button>
+              </div>
+            </div>
+          </div>
+          <h3 class="resource-subtitle" style="margin-top:24px;">📋 Quick Reference</h3>
+          <div class="battlecard-wrapper battlecard-wrapper--detail" id="diagBattlecardContainer">
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading diagnosis reference…</p>
+          </div>
+          </div>
+        </div>
+        <p class="detail-footer-cta">
+          <a href="#" class="detail-voice-link" id="voiceLinkDiagnosis">Talk to Your Care Guide</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Full-screen overlay: Treatments and red flags (only this when open) ── -->
+  <div class="detail-overlay" id="overlay-treatment" aria-hidden="true">
+    <div class="detail-overlay-inner">
+      <header class="detail-header">
+        <button type="button" class="detail-back" id="backTreatment" aria-label="Back to resources">← Back</button>
+        <h1 class="detail-title">Treatments and red flags</h1>
+      </header>
+      <div class="detail-view-body">
+        <div class="detail-content-center">
+          <h3 class="resource-subtitle">🎧 Voice Explanation</h3>
+          <div class="voice-bar" id="treatVoiceBar">
+            <div class="voice-bar-inner">
+              <button type="button" class="control-btn" id="treatPlayPauseBtn">▶ Play</button>
+              <div class="progress-bar" id="treatProgressBar" role="progressbar">
+                <div class="progress-fill" id="treatProgressFill"></div>
+              </div>
+              <span class="time-display" id="treatTimeDisplay">0:00 / 0:00</span>
+              <div class="speed-control" data-player="treat">
+                <button type="button" class="speed-btn active" data-speed="1">1x</button>
+                <button type="button" class="speed-btn" data-speed="1.25">1.25x</button>
+                <button type="button" class="speed-btn" data-speed="1.5">1.5x</button>
+                <button type="button" class="speed-btn" data-speed="2">2x</button>
+              </div>
+            </div>
+          </div>
+          <h3 class="resource-subtitle" style="margin-top:24px;">📋 Quick Reference</h3>
+          <div class="battlecard-wrapper battlecard-wrapper--detail" id="treatBattlecardContainer">
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading treatment reference…</p>
+          </div>
+          </div>
+        </div>
+        <p class="detail-footer-cta">
+          <a href="#" class="detail-voice-link" id="voiceLinkTreatment">Talk to Your Care Guide</a>
+        </p>
+      </div>
+    </div>
+  </div>
 
   <script src="/static/app.js"></script>
 </body>

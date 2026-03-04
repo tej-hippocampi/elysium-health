@@ -7,7 +7,7 @@ import os
 import json
 from typing import Optional, List
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, APIRouter, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -23,6 +23,16 @@ from pipeline.generate import GenerationLayer
 from integrations.elevenlabs   import ElevenLabsClient
 from integrations.tavus        import TavusClient
 from integrations.twilio_client import TwilioClient
+from auth import (
+    UserCreate,
+    UserLogin,
+    UserOut,
+    register_user,
+    authenticate_user,
+    get_current_user_optional,
+    get_current_user,
+    create_access_token,
+)
 
 # ─── App Setup ────────────────────────────────────────────────
 app = FastAPI(
@@ -40,6 +50,27 @@ app.add_middleware(
 )
 
 _patient_store: dict = {}
+
+
+def _frontend_cache_version() -> str:
+    """Version from frontend asset mtimes so patient dashboard always loads latest CSS/JS (no stale cache)."""
+    base = os.path.join(os.path.dirname(__file__), "..", "frontend")
+    paths = [os.path.join(base, "styles.css"), os.path.join(base, "app.js")]
+    try:
+        mtimes = [os.path.getmtime(p) for p in paths if os.path.isfile(p)]
+        return str(int(max(mtimes))) if mtimes else ""
+    except OSError:
+        return ""
+
+
+def _apply_cache_bust(html: str) -> str:
+    v = _frontend_cache_version()
+    if not v:
+        return html
+    html = html.replace('href="/static/styles.css"', f'href="/static/styles.css?v={v}"')
+    html = html.replace('src="/static/app.js"', f'src="/static/app.js?v={v}"')
+    return html
+
 
 # ─── Demo Seed ────────────────────────────────────────────────
 @app.on_event("startup")
@@ -168,6 +199,42 @@ class ChatResponse(BaseModel):
     audio_url:  Optional[str] = None
 
 
+# ─── Auth (Elysium Health landing) ────────────────────────────
+@app.post("/api/auth/register")
+async def auth_register(body: UserCreate):
+    """Register a new user; returns access token and user."""
+    try:
+        user = register_user(body.email, body.password, body.name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    token = create_access_token(user["email"])
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": UserOut(email=user["email"], name=user.get("name")),
+    }
+
+
+@app.post("/api/auth/login")
+async def auth_login(body: UserLogin):
+    """Sign in; returns access token and user."""
+    user = authenticate_user(body.email, body.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    token = create_access_token(user["email"])
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": UserOut(email=user["email"], name=user.get("name")),
+    }
+
+
+@app.get("/api/auth/me", response_model=UserOut)
+async def auth_me(user: UserOut = Depends(get_current_user)):
+    """Return current user from Bearer token."""
+    return user
+
+
 # ─── Doctor Portal ────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 async def doctor_portal():
@@ -245,6 +312,7 @@ async def doctor_patient_view(patient_id: str):
     with open(html_path) as f:
         html = f.read()
 
+    html = _apply_cache_bust(html)
     inject = f"<script>window.__PATIENT__ = {patient_json};</script>"
     html = html.replace("</head>", f"{inject}\n</head>")
     voice_url = f"/patient/{patient_id}/voice"
@@ -663,6 +731,7 @@ async def patient_dashboard(patient_id: str):
     with open(html_path) as f:
         html = f.read()
 
+    html = _apply_cache_bust(html)
     inject = f"<script>window.__PATIENT__ = {patient_json_str};</script>"
     html = html.replace("</head>", f"{inject}\n</head>")
 
