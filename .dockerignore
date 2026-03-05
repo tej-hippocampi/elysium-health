@@ -1,0 +1,11 @@
+# Dependencies and env
+backend/.env
+backend/__pycache__
+backend/**/__pycache__
+landing/
+.git
+.gitignore
+*.md
+.env
+.env.*
+!.env.example

@@ -1,0 +1,15 @@
+# CareGuide backend for production or local runs.
+# Landing page: deploy separately (e.g. Vercel) or build and serve elsewhere.
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - backend/.env
+    # Persist /tmp for generated audio if needed
+    volumes:
+      - careguide_audio:/tmp
+
+volumes:
+  careguide_audio: {}
