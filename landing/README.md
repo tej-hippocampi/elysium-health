@@ -1,6 +1,6 @@
-# Elysium Health Landing
+# Archangel Health Landing
 
-Marketing landing page for Elysium Health with **Sign in** and **Sign up**. Auth is handled by the CareGuide backend (JWT); users are stored in the backend (file-backed by default).
+Marketing landing page for Archangel Health with **Sign in** and **Sign up**. Auth is handled by the CareGuide backend (JWT); users are stored in the backend (file-backed by default).
 
 ## Run locally
 

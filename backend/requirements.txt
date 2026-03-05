@@ -17,6 +17,9 @@ pydantic==2.8.2
 # SMS
 twilio==9.2.3
 
+# Email (SendGrid Web API)
+sendgrid>=6.11.0
+
 # PDF parsing
 PyPDF2==3.0.1
 

@@ -40,7 +40,7 @@ export function SignInDialog({ open, onOpenChange }: Props) {
           <div>
             <h2 id="signin-title" className="text-lg font-semibold text-[#f5f5f7]">Sign in</h2>
             <p className="mt-1 text-sm text-[#a5a5aa]">
-              Sign in to your Elysium Health account.
+              Sign in to your Archangel Health account.
             </p>
           </div>
           <button

@@ -378,48 +378,67 @@ async def send_to_patient(patient_id: str):
             print(f"[send] SMS error: {e}")
             results["sms"] = f"error: {str(e)}"
 
-    # Email via Twilio SendGrid (or simple SMTP fallback)
+    # Email via SendGrid Web API (or SMTP fallback if no API key)
     if email:
         try:
-            import smtplib
-            from email.mime.text import MIMEText
-            from email.mime.multipart import MIMEMultipart
+            api_key = os.getenv("SENDGRID_API_KEY")
+            from_email = os.getenv("SENDGRID_FROM_EMAIL", "noreply@archangelhealth.ai")
+            from_name = os.getenv("SENDGRID_FROM_NAME", "Archangel Health")
 
-            smtp_host = os.getenv("SMTP_HOST")
-            smtp_user = os.getenv("SMTP_USER")
-            smtp_pass = os.getenv("SMTP_PASS")
-
-            if smtp_host and smtp_user and smtp_pass:
-                msg = MIMEMultipart("alternative")
-                msg["Subject"] = f"Your Recovery Resources Are Ready - CareGuide"
-                msg["From"] = smtp_user
-                msg["To"] = email
-
-                html_body = f"""
-                <div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:24px;">
-                    <div style="background:linear-gradient(135deg,#1A3C8F,#2563EB);color:#fff;padding:24px;border-radius:12px;text-align:center;margin-bottom:20px;">
-                        <h1 style="font-size:20px;margin-bottom:6px;">CareGuide</h1>
-                        <p style="font-size:14px;opacity:.85;">Your Recovery Resources Are Ready</p>
-                    </div>
-                    <p style="font-size:15px;color:#374151;line-height:1.6;margin-bottom:16px;">
-                        Hi {first_name}, your care team has prepared personalized recovery resources for you, including voice explanations and quick reference guides.
-                    </p>
-                    <a href="{dashboard_url}" style="display:block;text-align:center;background:#2563EB;color:#fff;padding:14px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:16px;">
-                        View Your Recovery Plan
-                    </a>
-                    <p style="font-size:13px;color:#6B7280;text-align:center;">Best viewed on a computer or tablet.</p>
+            html_body = f"""
+            <div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:24px;">
+                <div style="background:linear-gradient(135deg,#1A3C8F,#2563EB);color:#fff;padding:24px;border-radius:12px;text-align:center;margin-bottom:20px;">
+                    <h1 style="font-size:20px;margin-bottom:6px;">CareGuide</h1>
+                    <p style="font-size:14px;opacity:.85;">Your Recovery Resources Are Ready</p>
                 </div>
-                """
-                msg.attach(MIMEText(html_body, "html"))
+                <p style="font-size:15px;color:#374151;line-height:1.6;margin-bottom:16px;">
+                    Hi {first_name}, your care team has prepared personalized recovery resources for you, including voice explanations and quick reference guides.
+                </p>
+                <a href="{dashboard_url}" style="display:block;text-align:center;background:#2563EB;color:#fff;padding:14px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:16px;">
+                    View Your Recovery Plan
+                </a>
+                <p style="font-size:13px;color:#6B7280;text-align:center;">Best viewed on a computer or tablet.</p>
+            </div>
+            """
 
-                with smtplib.SMTP(smtp_host, int(os.getenv("SMTP_PORT", "587"))) as server:
-                    server.starttls()
-                    server.login(smtp_user, smtp_pass)
-                    server.send_message(msg)
-                results["email"] = "sent"
+            if api_key:
+                from sendgrid import SendGridAPIClient
+                from sendgrid.helpers.mail import Mail
+
+                message = Mail(
+                    from_email=(from_email, from_name),
+                    to_emails=email,
+                    subject="Your Recovery Resources Are Ready - CareGuide",
+                    html_content=html_body,
+                )
+                sg = SendGridAPIClient(api_key)
+                response = sg.send(message)
+                results["email"] = "sent" if response.status_code in (200, 202) else f"error: {response.status_code}"
+                if results["email"] == "sent":
+                    print(f"[send] SendGrid email sent → {email}")
             else:
-                results["email"] = "smtp_not_configured"
-                print(f"[send] Email skipped — SMTP not configured. Would send to: {email}")
+                # Fallback: SMTP
+                import smtplib
+                from email.mime.text import MIMEText
+                from email.mime.multipart import MIMEMultipart
+
+                smtp_host = os.getenv("SMTP_HOST")
+                smtp_user = os.getenv("SMTP_USER")
+                smtp_pass = os.getenv("SMTP_PASS")
+                if smtp_host and smtp_user and smtp_pass:
+                    msg = MIMEMultipart("alternative")
+                    msg["Subject"] = "Your Recovery Resources Are Ready - CareGuide"
+                    msg["From"] = smtp_user
+                    msg["To"] = email
+                    msg.attach(MIMEText(html_body, "html"))
+                    with smtplib.SMTP(smtp_host, int(os.getenv("SMTP_PORT", "587"))) as server:
+                        server.starttls()
+                        server.login(smtp_user, smtp_pass)
+                        server.send_message(msg)
+                    results["email"] = "sent"
+                else:
+                    results["email"] = "sendgrid_not_configured"
+                    print(f"[send] Email skipped — SENDGRID_API_KEY and SMTP not configured. Would send to: {email}")
 
         except Exception as e:
             print(f"[send] Email error: {e}")

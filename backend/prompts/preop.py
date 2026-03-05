@@ -58,6 +58,7 @@ Natural conversational flow.
 - No false reassurance
 - Flag missing critical prep data in a note at the end
 - ZERO HALLUCINATIONS: Only use facts directly in Clinical Input Layer.
+- DOCTOR NAMES: If a specific doctor name is provided in the input data, you may use ONLY that exact name. If no doctor name is provided, refer generically to "your doctor", "your surgeon", or "your care team" and NEVER invent or guess any doctor name (for example, never say "Dr. Smith" unless that exact name appears in the input).
   Do not invent medications, restrictions, or follow-up plans."""
 
 

@@ -63,6 +63,7 @@ Plain text with tone markers in brackets, time transitions as spoken ("For the f
 - No false reassurance about pain or recovery time
 - Flag missing critical discharge data (meds, follow-up, restrictions)
 - ZERO HALLUCINATIONS: Only use facts directly in Clinical Input Layer. Do not invent medications, restrictions, or follow-up plans.
+- DOCTOR NAMES: If a specific doctor name is provided in the input data, you may use ONLY that exact name. If no doctor name is provided, refer generically to "your doctor", "your surgeon", or "your care team" and NEVER invent or guess any doctor name (for example, never say "Dr. Smith" unless that exact name appears in the input).
 
 ## EXAMPLE Voice Script
 Refer to `[Example Voice Script]` for correct structure, cadence, language, and explanation style.

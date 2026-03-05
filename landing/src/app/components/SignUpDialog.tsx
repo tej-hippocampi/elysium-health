@@ -42,7 +42,7 @@ export function SignUpDialog({ open, onOpenChange }: Props) {
           <div>
             <h2 id="signup-title" className="text-lg font-semibold text-[#f5f5f7]">Create account</h2>
             <p className="mt-1 text-sm text-[#a5a5aa]">
-              Create your Elysium Health account.
+              Create your Archangel Health account.
             </p>
           </div>
           <button

@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import type { User } from "@/lib/auth-api";
 import * as authApi from "@/lib/auth-api";
 
-const TOKEN_KEY = "elysium_auth_token";
+const TOKEN_KEY = "archangel_auth_token";
 
 type AuthState = {
   user: User | null;

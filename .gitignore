@@ -2,6 +2,7 @@
 backend/.env
 **/.env
 *.env
+sendgrid.env
 
 # Python
 __pycache__/

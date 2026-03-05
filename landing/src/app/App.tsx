@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SignInDialog } from "@/app/components/SignInDialog";
 import { SignUpDialog } from "@/app/components/SignUpDialog";
+import ArchangelHealthLogo from "@/app/components/ArchangelHealthLogo";
 import { Button } from "@/app/components/ui/button";
 
 // Dashboard link after login: env or default to backend in dev
@@ -38,16 +39,10 @@ function LandingContent() {
       <div className="absolute inset-0 z-[1] bg-gradient-radial from-transparent via-[#0a0a0b]/30 to-[#0a0a0b]/90 pointer-events-none" />
       <div className="absolute inset-0 z-[1] bg-gradient-to-b from-[#0a0a0b]/50 via-transparent to-[#0a0a0b]/70 pointer-events-none" />
 
-      {/* Logo in corner — inline z-index so it stays above main content */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1, delay: 0.2 }}
-        className="hero-logo fixed top-6 left-6 md:top-8 md:left-8"
-        style={{ zIndex: 100 }}
-      >
-        <span className="logo-text">ELYSIUM</span>
-      </motion.div>
+      {/* Archangel Health logo (Figma) */}
+      <div className="hero-logo">
+        <ArchangelHealthLogo />
+      </div>
 
       {/* Auth nav — fixed top right; inline z-index/pointer-events so nothing can cover or block clicks */}
       <nav
@@ -60,14 +55,16 @@ function LandingContent() {
             {user ? (
               <>
                 <span className="text-[#f5f5f7]/95 text-sm font-medium max-w-[140px] truncate">
-                  {user.name || user.email}
+                  {user.email}
                 </span>
                 {DASHBOARD_URL && (
                   <a
                     href={DASHBOARD_URL}
                     className="auth-btn auth-btn-primary inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium text-[#0a0a0b] bg-[#f5f5f7] hover:bg-[#e0e0e5] transition-colors"
                   >
-                    Dashboard
+                    {user.name
+                      ? `Dr. ${user.name.trim().split(" ").slice(0, 2).join(" ")}`
+                      : "Doctor Portal"}
                   </a>
                 )}
                 <button
@@ -118,7 +115,7 @@ function LandingContent() {
             transition={{ duration: 1, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
             <a
-              href="https://calendly.com/tejxpatel23/elysium-health-intro"
+              href="https://calendly.com/tejxpatel23/archangel-health-intro"
               target="_blank"
               rel="noopener noreferrer"
               className="premium-button group relative inline-block text-center no-underline"
@@ -145,12 +142,6 @@ function LandingContent() {
         /* Raise content above GIF; do NOT apply to logo, nav, or modal overlay so they stay on top and clickable. */
         .hero > *:not(.bg-gif):not(.hero-logo):not(.auth-nav):not(.auth-modal-overlay) { z-index: 1; }
         .bg-gradient-radial { background: radial-gradient(circle, var(--tw-gradient-stops)); }
-        .logo-text {
-          font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, sans-serif;
-          font-weight: 600; font-size: 0.875rem; letter-spacing: 0.25em;
-          text-transform: uppercase; color: #f5f5f7; opacity: 0.9;
-        }
-        @media (min-width: 768px) { .logo-text { font-size: 1rem; } }
         .headline {
           font-size: clamp(2rem, 6vw, 4.5rem); font-weight: 500; line-height: 1.1;
           letter-spacing: -0.03em; font-variant-numeric: proportional-nums;

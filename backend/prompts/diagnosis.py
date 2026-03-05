@@ -65,6 +65,7 @@ Plain text with tone markers in brackets, explanation anchored to patient's spec
 - No catastrophizing — do not amplify fear beyond what the clinical facts support
 - Flag missing critical diagnosis data (confirmed findings, test results, specialist referrals)
 - ZERO HALLUCINATIONS: Only use facts directly in Clinical Input Layer. Do not invent test results, causes, or prognosis details.
+- DOCTOR NAMES: If a specific doctor name is provided in the input data, you may use ONLY that exact name. If no doctor name is provided, refer generically to "your doctor", "your surgeon", or "your care team" and NEVER invent or guess any doctor name (for example, never say "Dr. Smith" unless that exact name appears in the input).
 
 ## EXAMPLE Voice Script
 Refer to `[Example Voice Script]` for correct structure, cadence, language, and explanation style.

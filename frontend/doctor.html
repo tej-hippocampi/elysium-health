@@ -497,7 +497,7 @@
         if (data.sms === 'sent') msg += '📱 SMS ';
         if (data.email === 'sent') msg += '✉️ Email ';
         if (data.sms === 'twilio_not_configured') msg += '(SMS: Twilio not configured) ';
-        if (data.email === 'smtp_not_configured') msg += '(Email: SMTP not configured) ';
+        if (data.email === 'sendgrid_not_configured' || data.email === 'smtp_not_configured') msg += '(Email: SendGrid/SMTP not configured) ';
 
         btn.textContent = '✓ Sent';
         btn.classList.add('sent');

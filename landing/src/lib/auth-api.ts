@@ -1,5 +1,5 @@
 /**
- * Elysium Health landing — auth API client.
+ * Archangel Health landing — auth API client.
  * Uses relative /api in dev (Vite proxy to backend) or VITE_API_URL when set.
  */
 
