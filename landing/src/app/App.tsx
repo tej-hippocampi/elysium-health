@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SignInDialog } from "@/app/components/SignInDialog";
 import { SignUpDialog } from "@/app/components/SignUpDialog";
 import ArchangelHealthLogo from "@/app/components/ArchangelHealthLogo";
+import RecoveryResourcesEmailPreview from "@/app/components/RecoveryResourcesEmailPreview";
 import * as authApi from "@/lib/auth-api";
 
 // Dashboard link after login: env or default to backend in dev
@@ -215,6 +216,14 @@ function LandingContent() {
 }
 
 export default function App() {
+  const isEmailPreviewRoute =
+    typeof window !== "undefined" &&
+    (window.location.pathname === "/email-preview" || window.location.search.includes("emailPreview=1"));
+
+  if (isEmailPreviewRoute) {
+    return <RecoveryResourcesEmailPreview />;
+  }
+
   return (
     <AuthProvider>
       <LandingContent />

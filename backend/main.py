@@ -5,7 +5,9 @@ FastAPI backend: EHR → Pipeline → Dashboard → SMS
 
 import asyncio
 import os
+import re
 import json
+import html as html_lib
 import secrets
 import string
 from typing import Optional, List
@@ -80,6 +82,231 @@ def _apply_cache_bust(html: str) -> str:
     html = html.replace('href="/static/styles.css"', f'href="/static/styles.css?v={v}"')
     html = html.replace('src="/static/app.js"', f'src="/static/app.js?v={v}"')
     return html
+
+
+def _build_recovery_resources_email_html(
+    *,
+    first_name: str,
+    clinic_code: str,
+    resource_code: str,
+    recovery_plan_entry_url: str,
+    hero_image_src: str,
+    logo_image_src: str,
+) -> str:
+    """
+    Build the branded recovery-resources email body.
+    Mirrors the latest design while remaining broadly email-client compatible.
+    """
+    first_name_safe = html_lib.escape(first_name or "Patient")
+    clinic_code_safe = html_lib.escape(clinic_code or "N/A")
+    resource_code_safe = html_lib.escape(resource_code or "N/A")
+    recovery_url_safe = html_lib.escape(recovery_plan_entry_url or "#", quote=True)
+    hero_image_src_safe = html_lib.escape(hero_image_src, quote=True) if hero_image_src else ""
+    logo_image_src_safe = html_lib.escape(logo_image_src, quote=True) if logo_image_src else ""
+    hero_image_block = ""
+    if hero_image_src_safe:
+        hero_image_block = f'<img src="{hero_image_src_safe}" alt="Classical medical painting" style="display:block;width:100%;height:360px;object-fit:cover;border:0;" />'
+    else:
+        hero_image_block = '<div style="display:block;width:100%;height:360px;background:linear-gradient(135deg,#0f172a,#1e293b 45%,#1d4ed8);"></div>'
+    logo_block = ""
+    if logo_image_src_safe:
+        logo_block = f'<img src="{logo_image_src_safe}" alt="Archangel Health logo" width="64" height="64" style="display:block;width:64px;height:64px;margin:14px auto;border:0;" />'
+    else:
+        logo_block = '<div style="font-size:34px;line-height:1;color:#ffffff;text-align:center;padding-top:26px;">&#9877;</div>'
+    footer_logo_block = ""
+    if logo_image_src_safe:
+        footer_logo_block = f'<img src="{logo_image_src_safe}" alt="Archangel Health logo" width="24" height="24" style="display:block;width:24px;height:24px;margin:0 auto;border:0;" />'
+    else:
+        footer_logo_block = '<div style="font-size:18px;line-height:1;color:#4b5563;">&#9877;</div>'
+
+    return f"""
+    <div style="margin:0;padding:0;background:#EFF4FB;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#EFF4FB;">
+        <tr>
+          <td align="center" style="padding:24px 16px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="680" style="width:680px;max-width:680px;background:#ffffff;border-radius:14px;overflow:hidden;margin:0 auto;">
+              <tr>
+                <td style="padding:0;background:#0f172a;">
+                  <div style="position:relative;background:#0f172a;">
+                    {hero_image_block}
+                    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" height="360">
+                        <tr>
+                          <td align="center" valign="top" style="padding:18px 24px 0 24px;">
+                            <div style="width:92px;height:92px;border-radius:16px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.24);margin:0 auto 16px auto;">
+                              {logo_block}
+                            </div>
+                            <div style="font-family:Georgia,serif;color:#ffffff;font-size:62px;line-height:1.06;font-weight:700;text-shadow:0 3px 10px rgba(0,0,0,0.45);">
+                              Archangel Health
+                            </div>
+                            <div style="height:1px;width:120px;background:rgba(255,255,255,0.52);margin:14px auto 0 auto;"></div>
+                            <div style="display:inline-block;min-width:520px;background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.32);border-radius:12px;padding:14px 22px;margin-top:20px;">
+                              <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#bfdbfe;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">
+                                Your Care Package
+                              </div>
+                              <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;font-size:20px;line-height:1.12;font-weight:700;margin-top:5px;">
+                                Recovery Resources Ready
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0;background:#0f172a;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td align="center" style="padding:0 24px 0 24px;background:rgba(0,0,0,0.42);height:0;line-height:0;font-size:0;">
+                        <!-- Spacer row keeps dark hero finish consistent in clients that flatten positioned overlays -->
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:30px 28px 8px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2937;font-size:18px;line-height:1.65;">
+                  Hi <span style="font-weight:700;color:#111827;">{first_name_safe}</span>,
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 28px 20px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#4b5563;font-size:16px;line-height:1.75;">
+                  Your care team has prepared personalized recovery resources for you, including voice explanations and quick reference guides.
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 28px 8px 28px;">
+                  <div style="height:1px;background:linear-gradient(90deg,rgba(209,213,219,0),rgba(209,213,219,1),rgba(209,213,219,0));"></div>
+                </td>
+              </tr>
+
+              <tr>
+                <td align="center" style="padding:20px 28px 8px 28px;">
+                  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111827;font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Your Access Codes</div>
+                  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#6b7280;font-size:13px;line-height:1.6;margin-top:6px;">Save these codes to access your personalized recovery plan</div>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:10px 28px 0 28px;">
+                  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#6b7280;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-align:center;margin-bottom:10px;">Clinic Code</div>
+                  <div style="background:#f8fafc;border:1px solid #d1d5db;border-radius:12px;padding:18px;text-align:center;">
+                    <div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,'Courier New',monospace;color:#111827;font-size:34px;font-weight:800;letter-spacing:0.15em;line-height:1.2;">{clinic_code_safe}</div>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:16px 28px 0 28px;">
+                  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#6b7280;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-align:center;margin-bottom:10px;">Resource Code</div>
+                  <div style="background:#f8fafc;border:1px solid #d1d5db;border-radius:12px;padding:18px;text-align:center;">
+                    <div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,'Courier New',monospace;color:#111827;font-size:34px;font-weight:800;letter-spacing:0.15em;line-height:1.2;">{resource_code_safe}</div>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:22px 28px 14px 28px;">
+                  <a href="{recovery_url_safe}" style="display:block;text-decoration:none;text-align:center;background:#111827;color:#ffffff;border:1px solid #78350f;border-radius:12px;padding:15px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;font-weight:700;line-height:1.2;">
+                    View Your Recovery Plan
+                  </a>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:0 28px 22px 28px;">
+                  <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:13px 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#4b5563;font-size:13px;line-height:1.65;text-align:center;">
+                    <span style="color:#92400e;">&#10022;</span> <strong style="color:#111827;">Pro tip:</strong> Use your Clinic Code and Resource Code above to access your plan. Best viewed on a computer or tablet for the full experience.
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="border-top:1px solid #e5e7eb;padding:8px 28px 6px 28px;text-align:center;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
+                    <tr>
+                      <td align="center" style="padding:0 0 4px 0;">{footer_logo_block}</td>
+                    </tr>
+                    <tr>
+                      <td align="center" style="font-family:Georgia,serif;color:#374151;font-size:16px;font-weight:700;">Archangel Health</td>
+                    </tr>
+                    <tr>
+                      <td align="center" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#9ca3af;font-size:12px;padding-top:4px;">Your personalized healthcare companion</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#6b7280;font-size:12px;line-height:1.5;text-align:center;padding-top:14px;">
+              Questions? Reply to this email or contact your care team.
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+    """
+
+
+def _is_public_http_url(url: str) -> bool:
+    if not url:
+        return False
+    s = url.strip().lower()
+    return (
+        (s.startswith("http://") or s.startswith("https://"))
+        and "localhost" not in s
+        and "127.0.0.1" not in s
+        and "0.0.0.0" not in s
+    )
+
+
+def _email_asset_base_url() -> str:
+    candidate = (
+        os.getenv("EMAIL_PUBLIC_ASSET_BASE_URL")
+        or os.getenv("BASE_URL")
+        or "https://archangelhealth.ai"
+    ).strip().rstrip("/")
+    return candidate if _is_public_http_url(candidate) else "https://archangelhealth.ai"
+
+
+def _minify_email_html(html: str) -> str:
+    # Keep textual spaces intact but remove indentation/newlines between tags.
+    out = re.sub(r">\s+<", "><", html)
+    return out.strip()
+
+
+def _render_recovery_email_html(
+    *,
+    first_name: str,
+    clinic_code: str,
+    resource_code: str,
+    recovery_plan_entry_url: str,
+    use_local_preview_assets: bool = False,
+) -> str:
+    configured_hero_url = (os.getenv("EMAIL_HIPPOCRATES_IMAGE_URL") or "").strip()
+    configured_logo_url = (os.getenv("EMAIL_LOGO_IMAGE_URL") or "").strip()
+    canonical_hero_url = "https://archangelhealth.ai/hippocrates-email-bg.png"
+    canonical_logo_url = "https://archangelhealth.ai/medical-guardian-logo-email.png"
+
+    if use_local_preview_assets:
+        hero_public_url = "/email-assets/hippocrates-email-bg.png"
+        logo_public_url = "/email-assets/medical-guardian-logo-email.png"
+    else:
+        # Send mode uses stable canonical URLs by default.
+        hero_public_url = configured_hero_url if _is_public_http_url(configured_hero_url) else canonical_hero_url
+        logo_public_url = configured_logo_url if _is_public_http_url(configured_logo_url) else canonical_logo_url
+
+    html_body = _build_recovery_resources_email_html(
+        first_name=first_name,
+        clinic_code=clinic_code,
+        resource_code=resource_code,
+        recovery_plan_entry_url=recovery_plan_entry_url,
+        hero_image_src=hero_public_url,
+        logo_image_src=logo_public_url,
+    )
+    return _minify_email_html(html_body)
 
 
 # ─── Patient store starts empty (no demo seed) ─────────────────
@@ -391,32 +618,12 @@ async def send_to_patient(patient_id: str):
             from_email = os.getenv("SENDGRID_FROM_EMAIL", "noreply@archangelhealth.ai")
             from_name = os.getenv("SENDGRID_FROM_NAME", "Archangel Health")
 
-            codes_block = ""
-            if clinic_code or resource_code:
-                codes_block = (
-                    f'<p style="font-size:15px;color:#374151;line-height:1.6;margin-bottom:12px;">'
-                    f'Your access codes (save these):</p>'
-                    f'<p style="font-size:14px;color:#111827;margin-bottom:8px;">'
-                    f'<strong>Clinic Code:</strong> <b style="font-size:16px;letter-spacing:.05em;">{clinic_code or "—"}</b></p>'
-                    f'<p style="font-size:14px;color:#111827;margin-bottom:16px;">'
-                    f'<strong>Resource Code:</strong> <b style="font-size:16px;letter-spacing:.05em;">{resource_code or "—"}</b></p>'
-                )
-            html_body = f"""
-            <div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:24px;">
-                <div style="background:linear-gradient(135deg,#1A3C8F,#2563EB);color:#fff;padding:24px;border-radius:12px;text-align:center;margin-bottom:20px;">
-                    <h1 style="font-size:20px;margin-bottom:6px;">Archangel Health</h1>
-                    <p style="font-size:14px;opacity:.85;">Your Recovery Resources Are Ready</p>
-                </div>
-                <p style="font-size:15px;color:#374151;line-height:1.6;margin-bottom:16px;">
-                    Hi {first_name}, your care team has prepared personalized recovery resources for you, including voice explanations and quick reference guides.
-                </p>
-                {codes_block}
-                <a href="{recovery_plan_entry_url}" style="display:block;text-align:center;background:#2563EB;color:#fff;padding:14px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:16px;">
-                    View Your Recovery Plan
-                </a>
-                <p style="font-size:13px;color:#6B7280;text-align:center;">Use your Clinic Code and Resource Code above to access your plan. Best viewed on a computer or tablet.</p>
-            </div>
-            """
+            html_body = _render_recovery_email_html(
+                first_name=first_name,
+                clinic_code=clinic_code,
+                resource_code=resource_code,
+                recovery_plan_entry_url=recovery_plan_entry_url,
+            )
 
             if api_key:
                 from sendgrid import SendGridAPIClient
@@ -465,6 +672,23 @@ async def send_to_patient(patient_id: str):
         raise HTTPException(status_code=422, detail="No phone number or email on file for this patient")
 
     return {"patient_id": patient_id, "dashboard_url": dashboard_url, **results}
+
+
+@app.get("/internal/email-template-preview", response_class=HTMLResponse, include_in_schema=False)
+async def email_template_preview(
+    first_name: str = "Tej",
+    clinic_code: str = "TG85PQXR",
+    resource_code: str = "1COGO60I",
+):
+    """Local browser preview of the exact backend email template."""
+    base = _email_asset_base_url()
+    return _render_recovery_email_html(
+        first_name=first_name,
+        clinic_code=clinic_code,
+        resource_code=resource_code,
+        recovery_plan_entry_url=f"{base}/#recovery-plan",
+        use_local_preview_assets=True,
+    )
 
 
 # ─── New Two-Resource Pipeline ────────────────────────────────
@@ -875,6 +1099,15 @@ try:
         "/static",
         StaticFiles(directory=os.path.join(os.path.dirname(__file__), "../frontend")),
         name="static",
+    )
+except Exception:
+    pass
+
+try:
+    app.mount(
+        "/email-assets",
+        StaticFiles(directory=os.path.join(os.path.dirname(__file__), "assets")),
+        name="email_assets",
     )
 except Exception:
     pass
