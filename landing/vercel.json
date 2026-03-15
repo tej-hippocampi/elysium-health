@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/email-preview",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/email-preview/",
+      "destination": "/index.html"
+    }
+  ]
+}
